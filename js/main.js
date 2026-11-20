@@ -142,41 +142,69 @@
     var tagAktif = [];
 
     function prosesFormatTeks(str) {
-      var hasil = "";
-      var re = /(\[fn:\s*([\s\S]*?)\])|(\[font:(garamond|sans)\]([\s\S]*?)\[\/font\])|(\[size:(\d{2})\]([\s\S]*?)\[\/size\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)|(\[leading:(\d+(?:\.\d+)?)\]([\s\S]*?)\[\/leading\])/g;
+      var token = /(\[fn:\s*([\s\S]*?)\])|(\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\])|(\[\/(font|size|leading)\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
+      var tokens = [];
       var lastIdx = 0;
       var m;
-      while ((m = re.exec(str)) !== null) {
-        hasil += esc(str.slice(lastIdx, m.index));
+      while ((m = token.exec(str)) !== null) {
+        if (m.index > lastIdx) tokens.push({ type: "text", value: str.slice(lastIdx, m.index) });
         if (m[1]) {
-          var isiFn = m[2].trim();
-          if (isiFn) {
-            catatanKaki.push(isiFn);
-            var nomor = catatanKaki.length;
-            hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
-          }
+          tokens.push({ type: "footnote", raw: m[1], value: m[2] });
         } else if (m[3]) {
-          var clsFont = m[4] === "garamond" ? "teks-garamond" : "teks-sans";
-          hasil += '<span class="' + clsFont + '">' + prosesFormatTeks(m[5]) + "</span>";
-        } else if (m[6]) {
-          hasil += '<span style="font-size:' + esc(m[7]) + 'px">' + prosesFormatTeks(m[8]) + "</span>";
+          tokens.push({ type: "open", raw: m[3], value: m[4] });
+        } else if (m[5]) {
+          tokens.push({ type: "close", raw: m[5], value: m[6] });
+        } else if (m[7]) {
+          tokens.push({ type: "bold", value: m[8] });
         } else if (m[9]) {
-          hasil += "<strong>" + prosesFormatTeks(m[10]) + "</strong>";
-        } else if (m[11]) {
-          hasil += "<em>" + prosesFormatTeks(m[12]) + "</em>";
-        } else if (m[13]) {
-          var leading = parseFloat(m[14]);
-          if (leading >= 1 && leading <= 3) {
-            hasil += '<span class="teks-leading" style="line-height:' + leading + '">' +
-                     prosesFormatTeks(m[15]) + "</span>";
+          tokens.push({ type: "italic", value: m[10] });
+        }
+        lastIdx = token.lastIndex;
+      }
+      if (lastIdx < str.length) tokens.push({ type: "text", value: str.slice(lastIdx) });
+
+      var index = 0;
+      function parse(endingTag) {
+        var html = "";
+        while (index < tokens.length) {
+          var current = tokens[index++];
+          if (current.type === "close") {
+            if (current.value === endingTag) return { html: html, closed: true };
+            html += esc(current.raw);
+          } else if (current.type === "open") {
+            var inner = parse(current.value.split(":")[0]);
+            if (!inner.closed) {
+              html += esc(current.raw) + inner.html;
+            } else if (current.value.indexOf("font:") === 0) {
+              var kelas = current.value === "font:garamond" ? "teks-garamond" : "teks-sans";
+              html += '<span class="' + kelas + '">' + inner.html + "</span>";
+            } else if (current.value.indexOf("size:") === 0) {
+              html += '<span style="font-size:' + esc(current.value.slice(5)) + 'px">' + inner.html + "</span>";
+            } else {
+              var leading = parseFloat(current.value.slice(8));
+              html += leading >= 1 && leading <= 3
+                ? '<span class="teks-leading" style="line-height:' + leading + '">' + inner.html + "</span>"
+                : inner.html;
+            }
+          } else if (current.type === "footnote") {
+            var note = current.value.trim();
+            if (note) {
+              catatanKaki.push(note);
+              var nomor = catatanKaki.length;
+              html += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+            }
+          } else if (current.type === "bold") {
+            html += "<strong>" + prosesFormatTeks(current.value) + "</strong>";
+          } else if (current.type === "italic") {
+            html += "<em>" + prosesFormatTeks(current.value) + "</em>";
           } else {
-            hasil += prosesFormatTeks(m[15]);
+            html += esc(current.value);
           }
         }
-        lastIdx = re.lastIndex;
+        return { html: html, closed: false };
       }
-      hasil += esc(str.slice(lastIdx));
-      return hasil;
+
+      return parse(null).html;
     }
 
     function normalisasiTagInline(str) {

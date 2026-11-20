@@ -24,6 +24,48 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 14px;
     }
+    .adm .editor-visual {
+      min-height: 260px;
+      padding: 10px;
+      border: 1px solid var(--ink);
+      background: #fff;
+      outline: none;
+      white-space: pre-wrap;
+      tab-size: 4;
+    }
+    .adm .editor-visual:focus {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
+    .adm .editor-visual ol,
+    .adm .editor-visual ul {
+      margin: 0 0 24px;
+      padding-left: 24px;
+    }
+    .adm .editor-visual ul { list-style: disc; }
+    .adm .editor-visual ol { list-style: decimal; }
+    .adm .editor-visual li {
+      display: list-item;
+      padding: 0;
+      border: 0;
+      white-space: pre-wrap;
+      tab-size: 4;
+    }
+    .adm .editor-photo-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin: 0 0 6px;
+    }
+    .adm .editor-photo-actions button {
+      padding: 4px 8px;
+      font-size: 12px;
+      margin: 0;
+    }
+    .adm .editor-footnote {
+      cursor: pointer;
+      user-select: none;
+    }
     .adm button { font: inherit; padding: 10px 18px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; margin: 16px 8px 0 0; }
     .adm button.sekunder { background: #fff; color: var(--ink); }
     .adm button.kecil { padding: 5px 9px; margin: 0; font-size: 13px; line-height: 1.2; }
@@ -152,7 +194,7 @@
           <label for="t-tanggal">Tanggal tulisan</label>
           <input id="t-tanggal" type="date" required>
 
-          <label for="t-isi">Isi</label>
+          <label id="label-editor-visual">Isi</label>
           <div class="toolbar">
             <!-- 1. Normal, Italic, Bold -->
             <button type="button" id="btn-normal" class="sekunder kecil" title="Hapus format tebal/miring pada teks terpilih">Normal</button>
@@ -249,9 +291,9 @@
             </div>
           </div>
 
-          <textarea id="t-isi" required></textarea>
+          <div id="editor-visual" class="editor-visual baca-isi" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="label-editor-visual" spellcheck="true"><p><br></p></div>
           <p class="petunjuk">
-            Baris kosong = paragraf/bait baru. Sorot teks lalu klik tombol toolbar untuk format <strong>B</strong>, <em>I</em>, font Garamond, ukuran, perataan, daftar poin, atau spasi puisi (tombol <code>Tab</code> di keyboard juga otomatis menyisipkan 4 spasi).
+            Enter membuat paragraf baru; Shift+Enter membuat baris baru. Sorot teks lalu gunakan toolbar untuk format. Tombol <code>Tab</code> menyisipkan 4 spasi utuh.
           </p>
 
           <button id="t-simpan" type="submit">Simpan</button>
@@ -307,6 +349,8 @@
   (function () {
     "use strict";
     var $ = function (id) { return document.getElementById(id); };
+    var editor = $("editor-visual");
+    var editorRange = null;
     var LABEL = { prosa: "Prosa", puisi: "Puisi", lain: "Riset" };
     var BUCKET = "foto";
     var BULAN = [
@@ -351,7 +395,7 @@
     /* ---------- Peringatan sebelum keluar jika form belum disimpan ---------- */
     $("f-tulisan").addEventListener("input", function () { adaPerubahan = true; });
     window.addEventListener("beforeunload", function (e) {
-      if (adaPerubahan && ($("t-judul").value.trim() || $("t-isi").value.trim())) {
+      if (adaPerubahan && ($("t-judul").value.trim() || isiEditor().length)) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -395,212 +439,326 @@
       });
     }
 
-    /* ---------- Helper Manipulasi Textarea (Toolbar Pemformatan) ---------- */
-    function sisipDiKursor(textarea, teks, blokBaru) {
-      var start = textarea.selectionStart != null ? textarea.selectionStart : textarea.value.length;
-      var end = textarea.selectionEnd != null ? textarea.selectionEnd : textarea.value.length;
-      var sebelum = textarea.value.slice(0, start);
-      var sesudah = textarea.value.slice(end);
-
-      if (blokBaru) {
-        var prefix = sebelum.length === 0 ? "" : (/\n\n$/.test(sebelum) ? "" : (/\n$/.test(sebelum) ? "\n" : "\n\n"));
-        var suffix = sesudah.length === 0 ? "\n\n" : (/^\n\n/.test(sesudah) ? "" : (/^\n/.test(sesudah) ? "\n" : "\n\n"));
-        teks = prefix + teks + suffix;
+    /* ---------- Live visual editor and selection helpers ---------- */
+    function simpanSeleksiEditor() {
+      var sel = window.getSelection();
+      if (sel && sel.rangeCount && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        editorRange = sel.getRangeAt(0).cloneRange();
       }
-
-      textarea.value = sebelum + teks + sesudah;
-      var posisiBaru = sebelum.length + teks.length;
-      textarea.focus();
-      textarea.setSelectionRange(posisiBaru, posisiBaru);
-      adaPerubahan = true;
     }
 
-    function bungkusSeleksi(textarea, buka, tutup, placeholder) {
-      var start = textarea.selectionStart;
-      var end = textarea.selectionEnd;
-      var val = textarea.value;
-      var terpilih = val.slice(start, end);
-
-      if (!terpilih) {
-        var sisip = buka + placeholder + tutup;
-        textarea.value = val.slice(0, start) + sisip + val.slice(end);
-        textarea.focus();
-        textarea.setSelectionRange(start + buka.length, start + buka.length + placeholder.length);
+    function pulihkanSeleksiEditor() {
+      var savedRange = editorRange && editor.contains(editorRange.commonAncestorContainer)
+        ? editorRange.cloneRange()
+        : null;
+      editor.focus();
+      var sel = window.getSelection();
+      if (savedRange) {
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+        editorRange = savedRange.cloneRange();
+      } else if (sel && sel.rangeCount && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        editorRange = sel.getRangeAt(0).cloneRange();
       } else {
-        // Toggle jika sudah terbungkus tag yang sama
-        if (terpilih.startsWith(buka) && terpilih.endsWith(tutup) && terpilih.length >= buka.length + tutup.length) {
-          var bersih = terpilih.slice(buka.length, terpilih.length - tutup.length);
-          textarea.value = val.slice(0, start) + bersih + val.slice(end);
-          textarea.focus();
-          textarea.setSelectionRange(start, start + bersih.length);
-        } else {
-          textarea.value = val.slice(0, start) + buka + terpilih + tutup + val.slice(end);
-          textarea.focus();
-          textarea.setSelectionRange(start, start + buka.length + terpilih.length + tutup.length);
-        }
+        return null;
       }
-      adaPerubahan = true;
+      return sel.getRangeAt(0);
     }
 
-    // Terapkan properti blok (align / font / size) ke paragraf yang dipilih atau terbungkus seleksi
-    function terapkanAtributBlok(textarea, kunci, nilai) {
-      var val = textarea.value;
-      var start = textarea.selectionStart;
-      var end = textarea.selectionEnd;
-
-      // Cari batas paragraf berdasarkan pemisah baris kosong yang mencakup seleksi
-      var awalBlok = val.lastIndexOf("\n\n", start > 0 ? start - 1 : 0);
-      awalBlok = awalBlok === -1 ? 0 : awalBlok + 2;
-      var akhirBlok = val.indexOf("\n\n", end);
-      akhirBlok = akhirBlok === -1 ? val.length : akhirBlok;
-
-      var teksBlok = val.slice(awalBlok, akhirBlok);
-      var meta = {};
-      var isiMurni = teksBlok;
-
-      // Cek apakah sudah memiliki header [gaya: ...] di baris pertama blok
-      var mGaya = teksBlok.match(/^\[gaya:\s*([^\]]+)\]\n([\s\S]*)$/);
-      if (mGaya) {
-        mGaya[1].split(";").forEach(function (bag) {
-          var kv = bag.split(":");
-          if (kv.length === 2) meta[kv[0].trim()] = kv[1].trim();
-        });
-        isiMurni = mGaya[2];
+    function blokSaatIni(node) {
+      while (node && node !== editor) {
+        if (node.nodeType === 1 && /^(P|DIV|LI|BLOCKQUOTE)$/.test(node.tagName)) return node;
+        node = node.parentNode;
       }
+      return null;
+    }
 
-      if (nilai) meta[kunci] = nilai;
-      else delete meta[kunci];
-
-      var pasangan = Object.keys(meta).map(function (k) { return k + "=" + meta[k]; });
-      // Normalisasi format kunci=nilai
-      pasangan = [];
-      Object.keys(meta).forEach(function (k) {
-        if (meta[k]) pasangan.push(k + ":" + meta[k]);
+    function blokTerpilih(range) {
+      if (range.collapsed) {
+        var current = blokSaatIni(range.startContainer);
+        return current ? [current] : [];
+      }
+      var candidates = editor.querySelectorAll("p, li, blockquote");
+      if (!candidates.length) candidates = editor.querySelectorAll("div");
+      return Array.prototype.filter.call(candidates, function (block) {
+        return range.intersectsNode(block);
       });
+    }
 
-      var blokBaru = pasangan.length ? "[gaya: " + pasangan.join("; ") + "]\n" + isiMurni : isiMurni;
-      textarea.value = val.slice(0, awalBlok) + blokBaru + val.slice(akhirBlok);
-      textarea.focus();
-      textarea.setSelectionRange(awalBlok, awalBlok + blokBaru.length);
+    function aturGayaBlok(block, jenis, nilai) {
+      if (jenis === "font") {
+        block.classList.remove("teks-garamond", "teks-sans");
+        block.style.fontFamily = "";
+        if (nilai) block.classList.add(nilai === "garamond" ? "teks-garamond" : "teks-sans");
+        block.dataset.editorFont = nilai || "";
+      } else if (jenis === "size") {
+        block.style.fontSize = nilai ? nilai + "px" : "";
+        block.dataset.editorSize = nilai || "";
+      } else if (jenis === "leading") {
+        block.style.lineHeight = nilai || "";
+        block.dataset.editorLeading = nilai || "";
+      } else if (jenis === "align") {
+        block.classList.remove("rata-tengah", "rata-kanan", "rata-justify");
+        block.style.textAlign = "";
+        if (nilai === "tengah") block.classList.add("rata-tengah");
+        else if (nilai === "kanan") block.classList.add("rata-kanan");
+        else if (nilai === "justify") block.classList.add("rata-justify");
+        block.dataset.editorAlign = nilai || "";
+      }
       adaPerubahan = true;
     }
 
-    // 1. Normal, Bold, Italic
+    function terapkanKeBlok(jenis, nilai) {
+      var range = pulihkanSeleksiEditor();
+      if (!range) return;
+      blokTerpilih(range).forEach(function (block) { aturGayaBlok(block, jenis, nilai); });
+    }
+
+    function bungkusTeksTerpilih(buatPembungkus) {
+      var range = pulihkanSeleksiEditor();
+      if (!range || range.collapsed) return false;
+      var walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+      var nodes = [];
+      var node;
+      while ((node = walker.nextNode())) {
+        if (range.intersectsNode(node)) nodes.push(node);
+      }
+      var wrappers = [];
+      for (var i = nodes.length - 1; i >= 0; i--) {
+        node = nodes[i];
+        var mulai = node === range.startContainer ? range.startOffset : 0;
+        var akhir = node === range.endContainer ? range.endOffset : node.length;
+        if (mulai >= akhir) continue;
+        if (akhir < node.length) node.splitText(akhir);
+        var terpilih = mulai > 0 ? node.splitText(mulai) : node;
+        var pembungkus = buatPembungkus();
+        terpilih.parentNode.insertBefore(pembungkus, terpilih);
+        pembungkus.appendChild(terpilih);
+        wrappers.push(pembungkus);
+      }
+      if (!wrappers.length) return false;
+      wrappers.reverse();
+      var rangeBaru = document.createRange();
+      rangeBaru.setStartBefore(wrappers[0]);
+      rangeBaru.setEndAfter(wrappers[wrappers.length - 1]);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(rangeBaru);
+      editorRange = rangeBaru.cloneRange();
+      adaPerubahan = true;
+      return true;
+    }
+
+    function buatSpanFormat(jenis, nilai) {
+      var span = document.createElement("span");
+      if (jenis === "font") {
+        span.classList.add(nilai === "garamond" ? "teks-garamond" : "teks-sans");
+      } else if (jenis === "size") {
+        span.style.fontSize = nilai + "px";
+      } else if (jenis === "leading") {
+        span.classList.add("teks-leading");
+        span.style.lineHeight = nilai;
+      }
+      return span;
+    }
+
+    function formatInlineAtauBlok(jenis, nilai) {
+      if (!nilai || !bungkusTeksTerpilih(function () { return buatSpanFormat(jenis, nilai); })) {
+        terapkanKeBlok(jenis, nilai);
+      }
+    }
+
+    function sisipTeksEditor(teks) {
+      var range = pulihkanSeleksiEditor();
+      if (!range) {
+        range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+      }
+      range.deleteContents();
+      var textNode = document.createTextNode(teks);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      editorRange = range.cloneRange();
+      editor.focus();
+      adaPerubahan = true;
+    }
+
+    function sisipNodeEditor(element) {
+      var range = pulihkanSeleksiEditor();
+      if (!range) {
+        range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+      }
+      range.deleteContents();
+      range.insertNode(element);
+      range.setStartAfter(element);
+      range.collapse(true);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      editorRange = range.cloneRange();
+      editor.focus();
+      adaPerubahan = true;
+    }
+
+    function buatKontrolFoto(figure) {
+      figure.dataset.editorPhoto = "true";
+      figure.contentEditable = "false";
+      var img = figure.querySelector("img");
+      var layout = figure.classList.contains("baca-foto--penuh") ? "penuh" : "tengah";
+      figure.dataset.photoSrc = (img && img.getAttribute("src")) || figure.dataset.photoSrc || "";
+      figure.dataset.photoLayout = layout;
+      var caption = figure.querySelector("figcaption");
+      figure.dataset.photoCaption = caption ? caption.textContent : "";
+      if (figure.querySelector(".editor-photo-actions")) return figure;
+
+      var actions = document.createElement("div");
+      actions.className = "editor-photo-actions";
+      actions.contentEditable = "false";
+      actions.innerHTML = '<button type="button" class="sekunder kecil" data-photo-action="caption">Edit caption</button>' +
+                          '<button type="button" class="sekunder kecil" data-photo-action="delete">Hapus foto</button>';
+      figure.appendChild(actions);
+      return figure;
+    }
+
+    function buatFotoEditor(src, layout, caption) {
+      var figure = document.createElement("figure");
+      figure.className = "baca-foto baca-foto--" + (layout === "penuh" ? "penuh" : "tengah");
+      var img = document.createElement("img");
+      img.setAttribute("src", src);
+      img.setAttribute("alt", caption || "Ilustrasi tulisan");
+      img.setAttribute("loading", "lazy");
+      figure.appendChild(img);
+      if (caption) {
+        var figcaption = document.createElement("figcaption");
+        figcaption.textContent = caption;
+        figure.appendChild(figcaption);
+      }
+      figure.dataset.photoSrc = src;
+      figure.dataset.photoLayout = layout;
+      figure.dataset.photoCaption = caption || "";
+      return buatKontrolFoto(figure);
+    }
+
+    editor.addEventListener("mouseup", simpanSeleksiEditor);
+    editor.addEventListener("keyup", simpanSeleksiEditor);
+    editor.addEventListener("focus", simpanSeleksiEditor);
+    document.addEventListener("selectionchange", simpanSeleksiEditor);
+    editor.addEventListener("input", function () { adaPerubahan = true; simpanSeleksiEditor(); });
+    document.querySelectorAll(".toolbar button, .toolbar select").forEach(function (control) {
+      control.addEventListener("mousedown", function (e) {
+        simpanSeleksiEditor();
+        if (control.tagName === "BUTTON") e.preventDefault();
+      });
+    });
+
+    editor.addEventListener("click", function (e) {
+      var action = e.target.closest("[data-photo-action]");
+      if (action) {
+        var figure = action.closest("[data-editor-photo]");
+        if (!figure) return;
+        if (action.dataset.photoAction === "delete") figure.remove();
+        else {
+          var caption = window.prompt("Caption foto:", figure.dataset.photoCaption || "");
+          if (caption === null) return;
+          caption = caption.replace(/[\[\]|]/g, "-");
+          figure.dataset.photoCaption = caption;
+          var figcaption = figure.querySelector("figcaption");
+          if (caption && !figcaption) {
+            figcaption = document.createElement("figcaption");
+            figure.insertBefore(figcaption, figure.querySelector(".editor-photo-actions"));
+          }
+          if (figcaption) {
+            figcaption.textContent = caption;
+            figcaption.hidden = !caption;
+          }
+        }
+        adaPerubahan = true;
+        return;
+      }
+      var footnote = e.target.closest("[data-editor-footnote]");
+      if (footnote) {
+        var note = window.prompt("Teks footnote:", footnote.dataset.footnote || "");
+        if (note === null) return;
+        footnote.dataset.footnote = note.replace(/[\[\]]/g, "");
+        footnote.textContent = "[*]";
+        adaPerubahan = true;
+      }
+    });
+
     $("btn-bold").addEventListener("click", function () {
-      bungkusSeleksi($("t-isi"), "**", "**", "teks tebal");
+      pulihkanSeleksiEditor();
+      document.execCommand("bold", false, null);
+      simpanSeleksiEditor();
+      adaPerubahan = true;
     });
     $("btn-italic").addEventListener("click", function () {
-      bungkusSeleksi($("t-isi"), "*", "*", "teks miring");
+      pulihkanSeleksiEditor();
+      document.execCommand("italic", false, null);
+      simpanSeleksiEditor();
+      adaPerubahan = true;
     });
     $("btn-normal").addEventListener("click", function () {
-      var ta = $("t-isi");
-      var start = ta.selectionStart;
-      var end = ta.selectionEnd;
-      if (start === end) {
-        // Jika tidak ada seleksi, reset gaya blok paragraf saat ini ke normal/default
-        var val = ta.value;
-        var awalBlok = val.lastIndexOf("\n\n", start > 0 ? start - 1 : 0);
-        awalBlok = awalBlok === -1 ? 0 : awalBlok + 2;
-        var akhirBlok = val.indexOf("\n\n", end);
-        akhirBlok = akhirBlok === -1 ? val.length : akhirBlok;
-        var teksBlok = val.slice(awalBlok, akhirBlok).replace(/^\[gaya:\s*[^\]]+\]\n/, "");
-        ta.value = val.slice(0, awalBlok) + teksBlok + val.slice(akhirBlok);
-        ta.focus();
-        ta.setSelectionRange(awalBlok, awalBlok + teksBlok.length);
-      } else {
-        var bersih = ta.value.slice(start, end)
-          .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
-          .replace(/\*([\s\S]+?)\*/g, "$1")
-          .replace(/\[font:[^\]]+\]([\s\S]*?)\[\/font\]/g, "$1")
-          .replace(/\[size:[^\]]+\]([\s\S]*?)\[\/size\]/g, "$1")
-          .replace(/\[leading:[^\]]+\]([\s\S]*?)\[\/leading\]/g, "$1");
-        ta.value = ta.value.slice(0, start) + bersih + ta.value.slice(end);
-        ta.focus();
-        ta.setSelectionRange(start, start + bersih.length);
+      var range = pulihkanSeleksiEditor();
+      if (range && !range.collapsed) document.execCommand("removeFormat", false, null);
+      else if (range) {
+        blokSaatIni(range.startContainer) && ["font", "size", "leading", "align"].forEach(function (jenis) {
+          aturGayaBlok(blokSaatIni(range.startContainer), jenis, "");
+        });
       }
+      simpanSeleksiEditor();
       adaPerubahan = true;
     });
 
-    // 2. Pilihan Font (Default / Garamond / Sans)
     $("sel-font").addEventListener("change", function () {
-      var ta = $("t-isi");
-      var v = this.value;
-      if (ta.selectionStart !== ta.selectionEnd && v) {
-        bungkusSeleksi(ta, "[font:" + v + "]", "[/font]", "teks");
-      } else {
-        terapkanAtributBlok(ta, "font", v);
-      }
+      formatInlineAtauBlok("font", this.value);
       this.value = "";
     });
-
-    // 3. Ukuran Font
     $("sel-ukuran").addEventListener("change", function () {
-      var ta = $("t-isi");
-      var v = this.value;
-      if (ta.selectionStart !== ta.selectionEnd && v) {
-        bungkusSeleksi(ta, "[size:" + v + "]", "[/size]", "teks");
-      } else {
-        terapkanAtributBlok(ta, "size", v);
-      }
+      formatInlineAtauBlok("size", this.value);
       this.value = "";
     });
-
     $("sel-leading").addEventListener("change", function () {
-      var ta = $("t-isi");
-      var v = this.value;
-      if (ta.selectionStart !== ta.selectionEnd && v) {
-        bungkusSeleksi(ta, "[leading:" + v + "]", "[/leading]", "teks");
-      } else {
-        terapkanAtributBlok(ta, "leading", v);
-      }
+      formatInlineAtauBlok("leading", this.value);
       this.value = "";
     });
 
-    // 4. Perataan Teks (Kiri, Tengah, Kanan, Justify)
-    document.querySelectorAll("button[data-align]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var align = this.dataset.align;
-        terapkanAtributBlok($("t-isi"), "align", align === "kiri" ? "" : align);
+    document.querySelectorAll("button[data-align]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        terapkanKeBlok("align", this.dataset.align === "kiri" ? "" : this.dataset.align);
       });
     });
-
-    // 5. Poin 1 2 3 & Bullet
-    function formatDaftar(ordered) {
-      var ta = $("t-isi");
-      var val = ta.value;
-      var start = ta.selectionStart;
-      var end = ta.selectionEnd;
-      var awalBaris = val.lastIndexOf("\n", start > 0 ? start - 1 : 0);
-      awalBaris = awalBaris === -1 ? 0 : awalBaris + 1;
-      var akhirBaris = val.indexOf("\n", end);
-      akhirBaris = akhirBaris === -1 ? val.length : akhirBaris;
-
-      var potongan = val.slice(awalBaris, akhirBaris);
-      var barisArr = potongan.split("\n");
-      var hasil = barisArr.map(function (b, idx) {
-        var bersih = b.replace(/^\s*(?:\d+\.\s+|-\s+|\*\s+)/, "");
-        return (ordered ? (idx + 1) + ". " : "- ") + (bersih || "Item " + (idx + 1));
-      }).join("\n");
-
-      ta.value = val.slice(0, awalBaris) + hasil + val.slice(akhirBaris);
-      ta.focus();
-      ta.setSelectionRange(awalBaris, awalBaris + hasil.length);
+    $("btn-ol").addEventListener("click", function () {
+      pulihkanSeleksiEditor();
+      document.execCommand("insertOrderedList", false, null);
+      simpanSeleksiEditor();
       adaPerubahan = true;
-    }
-    $("btn-ol").addEventListener("click", function () { formatDaftar(true); });
-    $("btn-ul").addEventListener("click", function () { formatDaftar(false); });
-
-    // 6. Spasi Puisi & Jeda Bait + Dukungan Tombol Tab di Textarea
-    $("btn-spasi").addEventListener("click", function () {
-      sisipDiKursor($("t-isi"), "    ", false);
     });
+    $("btn-ul").addEventListener("click", function () {
+      pulihkanSeleksiEditor();
+      document.execCommand("insertUnorderedList", false, null);
+      simpanSeleksiEditor();
+      adaPerubahan = true;
+    });
+    $("btn-spasi").addEventListener("click", function () { sisipTeksEditor("    "); });
     $("btn-bait").addEventListener("click", function () {
-      sisipDiKursor($("t-isi"), "[spasi]", true);
+      var marker = document.createElement("span");
+      marker.className = "baca-jeda-bait";
+      marker.dataset.editorSpasi = "true";
+      marker.contentEditable = "false";
+      marker.setAttribute("aria-label", "Jeda bait");
+      sisipNodeEditor(marker);
     });
-    $("t-isi").addEventListener("keydown", function (e) {
+    editor.addEventListener("keydown", function (e) {
       if (e.key === "Tab") {
         e.preventDefault();
-        sisipDiKursor(this, "    ", false);
+        sisipTeksEditor("    ");
       }
     });
 
@@ -610,42 +768,69 @@
       var tagAktif = [];
 
       function prosesFormatTeks(str) {
-        // Parse inline tags: [fn: ...], [font:...], [size:...], [leading:...], **bold**, *italic*
-        var hasil = "";
-        var re = /(\[fn:\s*([\s\S]*?)\])|(\[font:(garamond|sans)\]([\s\S]*?)\[\/font\])|(\[size:(\d{2})\]([\s\S]*?)\[\/size\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)|(\[leading:(\d+(?:\.\d+)?)\]([\s\S]*?)\[\/leading\])/g;
+        var token = /(\[fn:\s*([\s\S]*?)\])|(\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\])|(\[\/(font|size|leading)\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
+        var tokens = [];
         var lastIdx = 0;
         var m;
-        while ((m = re.exec(str)) !== null) {
-          hasil += esc(str.slice(lastIdx, m.index));
+        while ((m = token.exec(str)) !== null) {
+          if (m.index > lastIdx) tokens.push({ type: "text", value: str.slice(lastIdx, m.index) });
           if (m[1]) {
-            var isiFn = m[2].trim();
-            if (isiFn) {
-              catatanKaki.push(isiFn);
-              var nomor = catatanKaki.length;
-              hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
-            }
+            tokens.push({ type: "footnote", raw: m[1], value: m[2] });
           } else if (m[3]) {
-            var clsFont = m[4] === "garamond" ? "teks-garamond" : "teks-sans";
-            hasil += '<span class="' + clsFont + '">' + prosesFormatTeks(m[5]) + "</span>";
-          } else if (m[6]) {
-            hasil += '<span style="font-size:' + esc(m[7]) + 'px">' + prosesFormatTeks(m[8]) + "</span>";
+            tokens.push({ type: "open", raw: m[3], value: m[4] });
+          } else if (m[5]) {
+            tokens.push({ type: "close", raw: m[5], value: m[6] });
+          } else if (m[7]) {
+            tokens.push({ type: "bold", value: m[8] });
           } else if (m[9]) {
-            hasil += "<strong>" + prosesFormatTeks(m[10]) + "</strong>";
-          } else if (m[11]) {
-            hasil += "<em>" + prosesFormatTeks(m[12]) + "</em>";
-          } else if (m[13]) {
-            var leading = parseFloat(m[14]);
-            if (leading >= 1 && leading <= 3) {
-              hasil += '<span class="teks-leading" style="line-height:' + leading + '">' +
-                       prosesFormatTeks(m[15]) + "</span>";
+            tokens.push({ type: "italic", value: m[10] });
+          }
+          lastIdx = token.lastIndex;
+        }
+        if (lastIdx < str.length) tokens.push({ type: "text", value: str.slice(lastIdx) });
+
+        var index = 0;
+        function parse(endingTag) {
+          var html = "";
+          while (index < tokens.length) {
+            var current = tokens[index++];
+            if (current.type === "close") {
+              if (current.value === endingTag) return { html: html, closed: true };
+              html += esc(current.raw);
+            } else if (current.type === "open") {
+              var inner = parse(current.value.split(":")[0]);
+              if (!inner.closed) {
+                html += esc(current.raw) + inner.html;
+              } else if (current.value.indexOf("font:") === 0) {
+                var kelas = current.value === "font:garamond" ? "teks-garamond" : "teks-sans";
+                html += '<span class="' + kelas + '">' + inner.html + "</span>";
+              } else if (current.value.indexOf("size:") === 0) {
+                html += '<span style="font-size:' + esc(current.value.slice(5)) + 'px">' + inner.html + "</span>";
+              } else {
+                var leading = parseFloat(current.value.slice(8));
+                html += leading >= 1 && leading <= 3
+                  ? '<span class="teks-leading" style="line-height:' + leading + '">' + inner.html + "</span>"
+                  : inner.html;
+              }
+            } else if (current.type === "footnote") {
+              var note = current.value.trim();
+              if (note) {
+                catatanKaki.push(note);
+                var nomor = catatanKaki.length;
+                html += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+              }
+            } else if (current.type === "bold") {
+              html += "<strong>" + prosesFormatTeks(current.value) + "</strong>";
+            } else if (current.type === "italic") {
+              html += "<em>" + prosesFormatTeks(current.value) + "</em>";
             } else {
-              hasil += prosesFormatTeks(m[15]);
+              html += esc(current.value);
             }
           }
-          lastIdx = re.lastIndex;
+          return { html: html, closed: false };
         }
-        hasil += esc(str.slice(lastIdx));
-        return hasil;
+
+        return parse(null).html;
       }
 
       function normalisasiTagInline(str) {
@@ -746,6 +931,169 @@
       return blokHtml;
     }
 
+    /* ---------- Serializer / deserializer untuk konten editor ---------- */
+    function serialisasiInline(node, fotoList) {
+      if (node.nodeType === 3) return node.nodeValue.replace(/\u00a0/g, " ");
+      if (node.nodeType !== 1) return "";
+      if (node.dataset.editorSpasi === "true") return "\uE000SPASI\uE000";
+      if (node.dataset.editorFootnote === "true") return "[fn: " + node.dataset.footnote + "]";
+      if (node.dataset.editorPhoto === "true" || node.classList.contains("baca-foto")) {
+        var image = node.querySelector("img");
+        fotoList.push({
+          src: node.dataset.photoSrc || (image && image.getAttribute("src")) || "",
+          layout: node.dataset.photoLayout || (node.classList.contains("baca-foto--penuh") ? "penuh" : "tengah"),
+          caption: node.dataset.photoCaption || (node.querySelector("figcaption") || {}).textContent || ""
+        });
+        return "\uE000PHOTO:" + (fotoList.length - 1) + "\uE000";
+      }
+      if (node.classList.contains("editor-photo-actions")) return "";
+      if (node.tagName === "BR") return "\n";
+
+      var hasil = Array.prototype.map.call(node.childNodes, function (child) {
+        return serialisasiInline(child, fotoList);
+      }).join("");
+      if (node.tagName === "STRONG" || node.tagName === "B") hasil = "**" + hasil + "**";
+      if (node.tagName === "EM" || node.tagName === "I") hasil = "*" + hasil + "*";
+      if (node.tagName === "SPAN") {
+        if (node.classList.contains("teks-garamond")) hasil = "[font:garamond]" + hasil + "[/font]";
+        else if (node.classList.contains("teks-sans")) hasil = "[font:sans]" + hasil + "[/font]";
+        var ukuran = node.style.fontSize.match(/^(\d{1,2})px$/);
+        if (ukuran) hasil = "[size:" + ukuran[1] + "]" + hasil + "[/size]";
+        if (node.classList.contains("teks-leading") && node.style.lineHeight) {
+          hasil = "[leading:" + node.style.lineHeight + "]" + hasil + "[/leading]";
+        }
+      }
+      return hasil;
+    }
+
+    function metadataBlok(node) {
+      var meta = [];
+      var font = node.dataset.editorFont ||
+        (node.classList.contains("teks-garamond") ? "garamond" :
+          node.classList.contains("teks-sans") ? "sans" : "");
+      var align = node.dataset.editorAlign ||
+        (node.classList.contains("rata-tengah") ? "tengah" :
+          node.classList.contains("rata-kanan") ? "kanan" :
+            node.classList.contains("rata-justify") ? "justify" :
+              node.style.textAlign === "center" ? "tengah" :
+                node.style.textAlign === "right" ? "kanan" : node.style.textAlign);
+      var size = node.dataset.editorSize || (node.style.fontSize.match(/^(\d{1,3})px$/) || [])[1] || "";
+      var leading = node.dataset.editorLeading || node.style.lineHeight || "";
+      if (align && align !== "left" && align !== "start") meta.push("align:" + align);
+      if (font) meta.push("font:" + font);
+      if (size) meta.push("size:" + size);
+      if (leading && /^\d+(?:\.\d+)?$/.test(leading) && Number(leading) >= 1 && Number(leading) <= 3) {
+        meta.push("leading:" + leading);
+      }
+      return meta;
+    }
+
+    function serialisasiEditor() {
+      var hasil = [];
+      var fotoList = [];
+
+      function tambahBlok(teks, meta) {
+        var re = /\uE000(SPASI|PHOTO:(\d+))\uE000/g;
+        var awal = 0;
+        var match;
+        function tambahTeks(bagian) {
+          if (!bagian.trim()) return;
+          hasil.push((meta.length ? "[gaya: " + meta.join("; ") + "]\n" : "") + bagian);
+        }
+        while ((match = re.exec(teks)) !== null) {
+          tambahTeks(teks.slice(awal, match.index));
+          if (match[1] === "SPASI") {
+            hasil.push("[spasi]");
+          } else {
+            var foto = fotoList[Number(match[2])];
+            if (foto) {
+              var tata = foto.layout === "penuh" ? "penuh" : "tengah";
+              var caption = String(foto.caption || "").replace(/[\[\]|]/g, "-");
+              hasil.push("[foto: " + foto.src + " | " + tata + (caption ? " | " + caption : "") + "]");
+            }
+          }
+          awal = re.lastIndex;
+        }
+        tambahTeks(teks.slice(awal));
+      }
+
+      function kunjungi(node) {
+        if (node.nodeType === 3) {
+          if (node.nodeValue.trim()) tambahBlok(node.nodeValue, []);
+          return;
+        }
+        if (node.nodeType !== 1) return;
+        if (node.dataset.editorSpasi === "true") {
+          hasil.push("[spasi]");
+          return;
+        }
+        if (node.dataset.editorPhoto === "true" || node.classList.contains("baca-foto")) {
+          var photoToken = serialisasiInline(node, fotoList);
+          tambahBlok(photoToken, []);
+          return;
+        }
+        if (node.tagName === "OL" || node.tagName === "UL") {
+          var prefix = node.tagName === "OL" ? "1. " : "- ";
+          var lines = Array.prototype.map.call(node.children, function (item, index) {
+            return (node.tagName === "OL" ? (index + 1) + ". " : prefix) + serialisasiInline(item, fotoList);
+          });
+          tambahBlok(lines.join("\n"), metadataBlok(node));
+          return;
+        }
+        var containsBlocks = Array.prototype.some.call(node.children, function (child) {
+          return /^(P|DIV|OL|UL|FIGURE)$/.test(child.tagName);
+        });
+        if (containsBlocks && node !== editor) {
+          Array.prototype.forEach.call(node.childNodes, kunjungi);
+          return;
+        }
+        tambahBlok(serialisasiInline(node, fotoList), metadataBlok(node));
+      }
+
+      Array.prototype.forEach.call(editor.childNodes, kunjungi);
+      return hasil.filter(function (item) { return item.trim().length > 0; });
+    }
+
+    function kontrolFootnoteEditor() {
+      var section = editor.querySelector(".baca-footnote");
+      var catatan = {};
+      if (section) {
+        section.querySelectorAll("li[id^='fn-']").forEach(function (item) {
+          var isi = item.cloneNode(true);
+          isi.querySelectorAll(".fn-balik").forEach(function (link) { link.remove(); });
+          catatan[item.id] = serialisasiInline(isi, []).trim();
+        });
+      }
+      editor.querySelectorAll(".fn-ref").forEach(function (ref) {
+        var link = ref.querySelector("a[href^='#fn-']");
+        var id = link ? link.getAttribute("href").slice(1) : "";
+        var marker = document.createElement("sup");
+        marker.className = "fn-ref editor-footnote";
+        marker.dataset.editorFootnote = "true";
+        marker.dataset.footnote = catatan[id] || "";
+        marker.contentEditable = "false";
+        marker.textContent = link ? link.textContent : "[*]";
+        ref.parentNode.replaceChild(marker, ref);
+      });
+      if (section) section.remove();
+    }
+
+    function siapkanEditorIsi(isi) {
+      editor.innerHTML = renderKontenHtml(Array.isArray(isi) ? isi : []);
+      editor.querySelectorAll(".baca-jeda-bait").forEach(function (spacer) {
+        spacer.dataset.editorSpasi = "true";
+        spacer.contentEditable = "false";
+      });
+      editor.querySelectorAll("figure.baca-foto").forEach(buatKontrolFoto);
+      kontrolFootnoteEditor();
+      if (!editor.childNodes.length) editor.innerHTML = "<p><br></p>";
+      editorRange = null;
+    }
+
+    function isiEditor() {
+      return serialisasiEditor();
+    }
+
     /* ---------- Toolbar: Sisip Foto Riset ---------- */
     $("btn-sisip-foto").addEventListener("click", function () {
       $("box-fn").hidden = true;
@@ -778,9 +1126,7 @@
         var publicUrl = db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
         var tata = $("f-riset-tata").value;
         var caption = $("f-riset-caption").value.trim().replace(/[\[\]|]/g, "-");
-        var tag = "[foto: " + publicUrl + " | " + tata + (caption ? " | " + caption : "") + "]";
-
-        sisipDiKursor($("t-isi"), tag, true);
+        sisipNodeEditor(buatFotoEditor(publicUrl, tata, caption));
 
         $("f-riset-file").value = "";
         $("f-riset-caption").value = "";
@@ -805,7 +1151,13 @@
       var teksFn = $("f-fn-teks").value.trim().replace(/[\[\]]/g, "");
       if (!teksFn) { info($("i-t"), "Isi teks footnote tidak boleh kosong.", true); return; }
       info($("i-t"), "");
-      sisipDiKursor($("t-isi"), "[fn: " + teksFn + "]", false);
+      var marker = document.createElement("sup");
+      marker.className = "fn-ref editor-footnote";
+      marker.dataset.editorFootnote = "true";
+      marker.dataset.footnote = teksFn;
+      marker.contentEditable = "false";
+      marker.textContent = "[*]";
+      sisipNodeEditor(marker);
       $("f-fn-teks").value = "";
       $("box-fn").hidden = true;
       $("status-toolbar").textContent = "Footnote disisipkan.";
@@ -822,7 +1174,7 @@
       var label = $("t-label").value.trim() || "Prosa";
       var penulis = $("t-penulis").value.trim() || "Penulis";
       var tanggalHtml = formatTanggalHtml($("t-tanggal").value);
-      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.replace(/^\n+|\n+$/g, ""); }).filter(function (s) { return s.trim().length > 0; });
+      var isi = isiEditor();
 
       $("isi-pratinjau").innerHTML =
         '<span class="label">' + esc(label) + ": " + esc(penulis) + '</span><br>' +
@@ -909,6 +1261,8 @@
       editT = null;
       adaPerubahan = false;
       $("f-tulisan").reset();
+      editor.innerHTML = "<p><br></p>";
+      editorRange = null;
       $("t-label").value = "Prosa";
       $("t-tanggal").value = hariIniIso();
       $("jdl-t").textContent = "Tulisan baru";
@@ -922,12 +1276,7 @@
     $("f-tulisan").addEventListener("submit", async function (e) {
       e.preventDefault();
       var judul = $("t-judul").value.trim();
-      // Pertahankan spasi awal baris puisi (jangan di-trim di sisi kiri baris)
-      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) {
-        return s.replace(/^\n+|\n+$/g, "");
-      }).filter(function (s) {
-        return s.trim().length > 0;
-      });
+      var isi = isiEditor();
       if (!judul || !isi.length) { info($("i-t"), "Judul dan isi wajib diisi.", true); return; }
 
       var baris = {
@@ -969,7 +1318,7 @@
         $("t-label").value = t.label;
         $("t-penulis").value = t.penulis;
         $("t-tanggal").value = t.tanggal || hariIniIso();
-        $("t-isi").value = t.isi.join("\n\n");
+        siapkanEditorIsi(t.isi);
         $("jdl-t").textContent = "Edit tulisan";
         $("t-batal").hidden = false;
         $("box-pratinjau").hidden = true;
