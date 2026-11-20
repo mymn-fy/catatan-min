@@ -75,9 +75,12 @@
     .adm .tab button { margin-top: 0; }
     .adm .tab button.aktif { background: var(--ink); color: #fff; }
     .adm .tab button:not(.aktif) { background: #fff; color: var(--ink); }
-    .adm ul { list-style: none; padding: 0; margin: 0; }
-    .adm li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ccc; }
-    .adm li .aksi-grup { display: flex; gap: 6px; flex: none; }
+    .adm #l-t,
+    .adm #l-p { list-style: none; padding: 0; margin: 0; }
+    .adm #l-t > li,
+    .adm #l-p > li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ccc; }
+    .adm #l-t > li .aksi-grup,
+    .adm #l-p > li .aksi-grup { display: flex; gap: 6px; flex: none; }
     .adm .info { margin: 12px 0 0; min-height: 1.4em; }
     .adm .galat { color: #b00020; }
     .adm .petunjuk { color: #666; font-size: 13px; margin: 4px 0 0; }
@@ -467,6 +470,8 @@
 
     function blokSaatIni(node) {
       while (node && node !== editor) {
+        if (node.nodeType === 1 && node.tagName === "LI" && node.parentNode &&
+            /^(OL|UL)$/.test(node.parentNode.tagName)) return node.parentNode;
         if (node.nodeType === 1 && /^(P|DIV|LI|BLOCKQUOTE)$/.test(node.tagName)) return node;
         node = node.parentNode;
       }
@@ -480,9 +485,14 @@
       }
       var candidates = editor.querySelectorAll("p, li, blockquote");
       if (!candidates.length) candidates = editor.querySelectorAll("div");
-      return Array.prototype.filter.call(candidates, function (block) {
-        return range.intersectsNode(block);
+      var blocks = [];
+      Array.prototype.forEach.call(candidates, function (block) {
+        if (!range.intersectsNode(block)) return;
+        var target = block.tagName === "LI" && block.parentNode &&
+          /^(OL|UL)$/.test(block.parentNode.tagName) ? block.parentNode : block;
+        if (blocks.indexOf(target) === -1) blocks.push(target);
       });
+      return blocks;
     }
 
     function aturGayaBlok(block, jenis, nilai) {

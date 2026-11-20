@@ -300,6 +300,12 @@ main {
   flex-direction: column;
   gap: 6px;
 }
+.baca-isi ol {
+  list-style-type: decimal;
+}
+.baca-isi ul {
+  list-style-type: disc;
+}
 .baca-isi li {
   white-space: pre-wrap;
   tab-size: 4;
