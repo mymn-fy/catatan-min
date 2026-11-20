@@ -117,7 +117,7 @@
       .replace(/\[gaya:[^\]]*\]/gi, " ")
       .replace(/\[foto:[^\]]*\]/gi, " ")
       .replace(/\[fn:[^\]]*\]/gi, "")
-      .replace(/\[\/?(?:font|size)(?::[^\]]*)?\]/gi, "")
+      .replace(/\[\/?(?:font|size|leading)(?::[^\]]*)?\]/gi, "")
       .replace(/\[spasi\]/gi, " ")
       .replace(/\*{1,2}([^*]+?)\*{1,2}/g, "$1")
       .replace(/\s+/g, " ")
@@ -139,11 +139,11 @@
   /* ---------- Render Isi Bacaan (Format Teks, Puisi, Foto Riset & Footnote) ---------- */
   function renderIsiBaca(daftarParagraf) {
     var catatanKaki = [];
-    var fontAktif = [];
+    var tagAktif = [];
 
     function prosesFormatTeks(str) {
       var hasil = "";
-      var re = /(\[fn:\s*([\s\S]*?)\])|(\[font:(garamond|sans)\]([\s\S]*?)\[\/font\])|(\[size:(\d{2})\]([\s\S]*?)\[\/size\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
+      var re = /(\[fn:\s*([\s\S]*?)\])|(\[font:(garamond|sans)\]([\s\S]*?)\[\/font\])|(\[size:(\d{2})\]([\s\S]*?)\[\/size\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)|(\[leading:(\d+(?:\.\d+)?)\]([\s\S]*?)\[\/leading\])/g;
       var lastIdx = 0;
       var m;
       while ((m = re.exec(str)) !== null) {
@@ -159,11 +159,19 @@
           var clsFont = m[4] === "garamond" ? "teks-garamond" : "teks-sans";
           hasil += '<span class="' + clsFont + '">' + prosesFormatTeks(m[5]) + "</span>";
         } else if (m[6]) {
-          hasil += '<span style="font-size:' + esc(m[7]) + 'px;line-height:1.45">' + prosesFormatTeks(m[8]) + "</span>";
+          hasil += '<span style="font-size:' + esc(m[7]) + 'px">' + prosesFormatTeks(m[8]) + "</span>";
         } else if (m[9]) {
           hasil += "<strong>" + prosesFormatTeks(m[10]) + "</strong>";
         } else if (m[11]) {
           hasil += "<em>" + prosesFormatTeks(m[12]) + "</em>";
+        } else if (m[13]) {
+          var leading = parseFloat(m[14]);
+          if (leading >= 1 && leading <= 3) {
+            hasil += '<span class="teks-leading" style="line-height:' + leading + '">' +
+                     prosesFormatTeks(m[15]) + "</span>";
+          } else {
+            hasil += prosesFormatTeks(m[15]);
+          }
         }
         lastIdx = re.lastIndex;
       }
@@ -171,17 +179,22 @@
       return hasil;
     }
 
-    function normalisasiTagFont(str) {
-      var pembuka = fontAktif.map(function (font) { return "[font:" + font + "]"; }).join("");
-      var stack = fontAktif.slice();
-      var re = /\[font:(garamond|sans)\]|\[\/font\]/g;
+    function normalisasiTagInline(str) {
+      var pembuka = tagAktif.map(function (tag) { return tag.buka; }).join("");
+      var stack = tagAktif.slice();
+      var re = /\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\]|\[\/(font|size|leading)\]/g;
       var m;
       while ((m = re.exec(str)) !== null) {
-        if (m[1]) stack.push(m[1]);
-        else if (stack.length) stack.pop();
+        if (m[1]) {
+          stack.push({ nama: m[1].split(":")[0], buka: "[" + m[1] + "]" });
+        } else if (stack.length && stack[stack.length - 1].nama === m[2]) {
+          stack.pop();
+        }
       }
-      fontAktif = stack;
-      var penutup = fontAktif.slice().reverse().map(function () { return "[/font]"; }).join("");
+      tagAktif = stack;
+      var penutup = tagAktif.slice().reverse().map(function (tag) {
+        return "[/" + tag.nama + "]";
+      }).join("");
       return pembuka + str + penutup;
     }
 
@@ -224,6 +237,10 @@
       if (meta.size && /^\d{2}$/.test(meta.size)) {
         styleList.push("font-size:" + meta.size + "px");
       }
+      if (meta.leading && /^\d+(?:\.\d+)?$/.test(meta.leading)) {
+        var leadingBlok = parseFloat(meta.leading);
+        if (leadingBlok >= 1 && leadingBlok <= 3) styleList.push("line-height:" + leadingBlok);
+      }
 
       var attrClass = kelasList.length ? ' class="' + kelasList.join(" ") + '"' : "";
       var attrStyle = styleList.length ? ' style="' + styleList.join(";") + '"' : "";
@@ -234,16 +251,16 @@
 
       if (semuaOl) {
         return "<ol" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
-          return "<li>" + prosesFormatTeks(normalisasiTagFont(b.replace(/^\s*\d+\.\s+/, ""))) + "</li>";
+          return "<li>" + prosesFormatTeks(normalisasiTagInline(b.replace(/^\s*\d+\.\s+/, ""))) + "</li>";
         }).join("") + "</ol>";
       }
       if (semuaUl) {
         return "<ul" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
-          return "<li>" + prosesFormatTeks(normalisasiTagFont(b.replace(/^\s*-\s+/, ""))) + "</li>";
+          return "<li>" + prosesFormatTeks(normalisasiTagInline(b.replace(/^\s*-\s+/, ""))) + "</li>";
         }).join("") + "</ul>";
       }
 
-      return "<p" + attrClass + attrStyle + ">" + prosesFormatTeks(normalisasiTagFont(isiBlok)) + "</p>";
+      return "<p" + attrClass + attrStyle + ">" + prosesFormatTeks(normalisasiTagInline(isiBlok)) + "</p>";
     }).join("");
 
     if (catatanKaki.length) {
