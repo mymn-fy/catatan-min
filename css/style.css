@@ -307,8 +307,28 @@ main {
   list-style-type: disc;
 }
 .baca-isi li {
+  font-family: inherit;
+  font-size: inherit;
   white-space: pre-wrap;
   tab-size: 4;
+}
+.baca-isi li:has(> span[style*="font-size"]) {
+  font-size: inherit;
+}
+.baca-isi li:has(> .teks-garamond) {
+  font-family: var(--serif);
+}
+.baca-isi ol.teks-garamond li,
+.baca-isi ul.teks-garamond li {
+  font-family: var(--serif);
+}
+.baca-isi ol[style*="font-size"] .teks-garamond,
+.baca-isi ul[style*="font-size"] .teks-garamond {
+  font-size: inherit;
+}
+.baca-isi li::marker {
+  font-family: inherit;
+  font-size: inherit;
 }
 .baca-jeda-bait {
   height: 28px;

@@ -182,7 +182,7 @@
               html += '<span style="font-size:' + esc(current.value.slice(5)) + 'px">' + inner.html + "</span>";
             } else {
               var leading = parseFloat(current.value.slice(8));
-              html += leading >= 1 && leading <= 3
+              html += leading >= 0.7 && leading <= 3
                 ? '<span class="teks-leading" style="line-height:' + leading + '">' + inner.html + "</span>"
                 : inner.html;
             }
@@ -267,7 +267,7 @@
       }
       if (meta.leading && /^\d+(?:\.\d+)?$/.test(meta.leading)) {
         var leadingBlok = parseFloat(meta.leading);
-        if (leadingBlok >= 1 && leadingBlok <= 3) styleList.push("line-height:" + leadingBlok);
+        if (leadingBlok >= 0.7 && leadingBlok <= 3) styleList.push("line-height:" + leadingBlok);
       }
 
       var attrClass = kelasList.length ? ' class="' + kelasList.join(" ") + '"' : "";

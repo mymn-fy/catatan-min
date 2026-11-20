@@ -225,6 +225,9 @@
 
             <select id="sel-leading" class="tb-select" title="Jarak antarbaris untuk paragraf/teks terpilih" aria-label="Jarak antarbaris">
               <option value="">Spasi: Default</option>
+              <option value="0.85">Spasi: 0.85 (Rapat)</option>
+              <option value="0.95">Spasi: 0.95 (Rapat)</option>
+              <option value="1.0">Spasi: 1.0</option>
               <option value="1.2">Spasi: 1.2</option>
               <option value="1.5">Spasi: 1.5</option>
               <option value="1.8">Spasi: 1.8</option>
@@ -573,9 +576,30 @@
     }
 
     function formatInlineAtauBlok(jenis, nilai) {
+      var range = pulihkanSeleksiEditor();
+      var blok = range ? blokSaatIni(range.startContainer) : null;
+      if (blok && /^(OL|UL)$/.test(blok.tagName) &&
+          (jenis === "font" || jenis === "size" || jenis === "leading")) {
+        terapkanKeBlok(jenis, nilai);
+        if (jenis === "size") bersihkanUkuranInlineDaftar(blok);
+        return;
+      }
       if (!nilai || !bungkusTeksTerpilih(function () { return buatSpanFormat(jenis, nilai); })) {
         terapkanKeBlok(jenis, nilai);
       }
+    }
+
+    function bersihkanUkuranInlineDaftar(list) {
+      list.querySelectorAll("li span[style]").forEach(function (span) {
+        if (span.closest("ol, ul") !== list || !span.style.fontSize) return;
+        span.style.removeProperty("font-size");
+        if (span.classList.contains("teks-garamond")) span.style.fontSize = "inherit";
+        if (!span.getAttribute("style")) span.removeAttribute("style");
+        if (span.attributes.length) return;
+        var parent = span.parentNode;
+        while (span.firstChild) parent.insertBefore(span.firstChild, span);
+        parent.removeChild(span);
+      });
     }
 
     function sisipTeksEditor(teks) {
@@ -744,15 +768,64 @@
         terapkanKeBlok("align", this.dataset.align === "kiri" ? "" : this.dataset.align);
       });
     });
+
+    function normalisasiDaftarEditor() {
+      var lists = editor.querySelectorAll("p > ol, p > ul, div > ol, div > ul, blockquote > ol, blockquote > ul");
+      Array.prototype.forEach.call(lists, function (list) {
+        var wrapper = list.parentNode;
+        ["teks-garamond", "teks-sans", "rata-tengah", "rata-kanan", "rata-justify"].forEach(function (className) {
+          if (wrapper.classList.contains(className)) list.classList.add(className);
+        });
+        [["editorFont", "font"], ["editorSize", "size"], ["editorLeading", "leading"], ["editorAlign", "align"]]
+          .forEach(function (attribute) {
+            if (!list.dataset[attribute[0]] && wrapper.dataset[attribute[0]]) {
+              list.dataset[attribute[0]] = wrapper.dataset[attribute[0]];
+            }
+          });
+        ["fontSize", "lineHeight", "textAlign"].forEach(function (property) {
+          if (!list.style[property] && wrapper.style[property]) list.style[property] = wrapper.style[property];
+        });
+
+        var sebelumnya = [];
+        var sesudahnya = [];
+        var setelahDaftar = false;
+        Array.prototype.forEach.call(wrapper.childNodes, function (node) {
+          if (node === list) setelahDaftar = true;
+          else if (setelahDaftar) sesudahnya.push(node);
+          else sebelumnya.push(node);
+        });
+        function bermakna(nodes) {
+          return nodes.some(function (node) {
+            return node.nodeType === 1 ? node.tagName !== "BR" : node.nodeType === 3 && node.nodeValue.trim();
+          });
+        }
+
+        var parent = wrapper.parentNode;
+        function sisipkanSisa(nodes) {
+          if (!bermakna(nodes)) return;
+          var block = wrapper.cloneNode(false);
+          block.removeAttribute("id");
+          nodes.forEach(function (node) { block.appendChild(node); });
+          parent.insertBefore(block, wrapper);
+        }
+        sisipkanSisa(sebelumnya);
+        parent.insertBefore(list, wrapper);
+        sisipkanSisa(sesudahnya);
+        parent.removeChild(wrapper);
+      });
+    }
+
     $("btn-ol").addEventListener("click", function () {
       pulihkanSeleksiEditor();
       document.execCommand("insertOrderedList", false, null);
+      normalisasiDaftarEditor();
       simpanSeleksiEditor();
       adaPerubahan = true;
     });
     $("btn-ul").addEventListener("click", function () {
       pulihkanSeleksiEditor();
       document.execCommand("insertUnorderedList", false, null);
+      normalisasiDaftarEditor();
       simpanSeleksiEditor();
       adaPerubahan = true;
     });
@@ -818,7 +891,7 @@
                 html += '<span style="font-size:' + esc(current.value.slice(5)) + 'px">' + inner.html + "</span>";
               } else {
                 var leading = parseFloat(current.value.slice(8));
-                html += leading >= 1 && leading <= 3
+                html += leading >= 0.7 && leading <= 3
                   ? '<span class="teks-leading" style="line-height:' + leading + '">' + inner.html + "</span>"
                   : inner.html;
               }
@@ -904,7 +977,7 @@
         }
         if (meta.leading && /^\d+(?:\.\d+)?$/.test(meta.leading)) {
           var leadingBlok = parseFloat(meta.leading);
-          if (leadingBlok >= 1 && leadingBlok <= 3) styleList.push("line-height:" + leadingBlok);
+          if (leadingBlok >= 0.7 && leadingBlok <= 3) styleList.push("line-height:" + leadingBlok);
         }
 
         var attrClass = kelasList.length ? ' class="' + kelasList.join(" ") + '"' : "";
@@ -992,7 +1065,7 @@
       if (align && align !== "left" && align !== "start") meta.push("align:" + align);
       if (font) meta.push("font:" + font);
       if (size) meta.push("size:" + size);
-      if (leading && /^\d+(?:\.\d+)?$/.test(leading) && Number(leading) >= 1 && Number(leading) <= 3) {
+      if (leading && /^\d+(?:\.\d+)?$/.test(leading) && Number(leading) >= 0.7 && Number(leading) <= 3) {
         meta.push("leading:" + leading);
       }
       return meta;
