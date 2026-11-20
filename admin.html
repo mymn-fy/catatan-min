@@ -16,10 +16,11 @@
     .adm input, .adm select, .adm textarea {
       width: 100%; padding: 10px; font: inherit; border: 1px solid var(--ink); background: #fff; border-radius: 0;
     }
-    .adm textarea { min-height: 220px; line-height: 1.4; }
+    .adm textarea { min-height: 240px; line-height: 1.5; }
     .adm button { font: inherit; padding: 10px 18px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; margin: 16px 8px 0 0; }
     .adm button.sekunder { background: #fff; color: var(--ink); }
-    .adm button.kecil { padding: 4px 10px; margin: 0 0 0 6px; }
+    .adm button.kecil { padding: 5px 10px; margin: 0; font-size: 13px; }
+    .adm button:disabled { opacity: 0.5; cursor: default; }
     .adm .atas { display: flex; justify-content: space-between; align-items: center; }
     .adm .tab { margin: 0 0 8px; }
     .adm .tab button { margin-top: 0; }
@@ -27,18 +28,53 @@
     .adm .tab button:not(.aktif) { background: #fff; color: var(--ink); }
     .adm ul { list-style: none; padding: 0; margin: 0; }
     .adm li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ccc; }
+    .adm li .aksi-grup { display: flex; gap: 6px; flex: none; }
     .adm .info { margin: 12px 0 0; min-height: 1.4em; }
     .adm .galat { color: #b00020; }
     .adm .petunjuk { color: #666; font-size: 13px; margin: 4px 0 0; }
-    .adm img.mini { width: 48px; height: 48px; object-fit: cover; margin-right: 12px; }
+    .adm img.mini { width: 48px; height: 48px; object-fit: cover; margin-right: 12px; vertical-align: middle; }
+
+    /* Toolbar editor isi */
+    .adm .toolbar {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      padding: 8px; border: 1px solid var(--ink); border-bottom: 0; background: #f8f8f8;
+    }
+    .adm .toolbar-status { font-size: 12px; color: var(--green); margin-left: auto; }
+
+    /* Panel sisip foto / footnote inline */
+    .adm .sub-box {
+      border: 1px solid var(--ink); border-bottom: 0; background: #fcfcfc; padding: 14px;
+    }
+    .adm .sub-box .baris-2 {
+      display: grid; grid-template-columns: 1fr 180px; gap: 10px; margin-top: 8px;
+    }
+    .adm .sub-box label { margin: 6px 0 4px; font-size: 13px; }
+    .adm .sub-box .aksi-sub { margin-top: 10px; display: flex; gap: 8px; }
+
+    /* Pratinjau tulisan */
+    .adm .pratinjau-box {
+      margin-top: 24px; padding: 24px; border: 1px solid var(--ink); background: #fff;
+    }
+    .adm .pratinjau-head {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 18px;
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #666;
+    }
+
+    /* Filter daftar tulisan */
+    .adm .cari-admin { margin: 8px 0 12px; }
+
     [hidden] { display: none !important; }
+    @media (max-width: 600px) {
+      .adm .sub-box .baris-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="adm">
     <div class="atas">
       <h1>Admin</h1>
-      <div><a href="index.html">Lihat situs</a> <button id="keluar" class="sekunder kecil" type="button" hidden>Keluar</button></div>
+      <div><a href="index.html">Lihat situs</a> <button id="keluar" class="sekunder kecil" type="button" hidden style="margin-left:8px">Keluar</button></div>
     </div>
 
     <!-- LOGIN -->
@@ -83,15 +119,65 @@
           <datalist id="daftar-penulis"></datalist>
 
           <label for="t-isi">Isi</label>
+          <div class="toolbar">
+            <button type="button" id="btn-sisip-foto" class="sekunder kecil">+ Sisipkan Foto</button>
+            <button type="button" id="btn-sisip-fn" class="sekunder kecil">+ Footnote</button>
+            <button type="button" id="btn-pratinjau" class="sekunder kecil">Pratinjau</button>
+            <span id="status-toolbar" class="toolbar-status"></span>
+          </div>
+
+          <!-- Panel sisip foto -->
+          <div id="box-foto" class="sub-box" hidden>
+            <label for="f-riset-file">Pilih foto (otomatis dikompres ke WebP/JPEG)</label>
+            <input id="f-riset-file" type="file" accept="image/*">
+            <div class="baris-2">
+              <div>
+                <label for="f-riset-caption">Keterangan foto / caption (opsional)</label>
+                <input id="f-riset-caption" type="text" placeholder="Contoh: Dokumentasi arsip lapangan, 2024.">
+              </div>
+              <div>
+                <label for="f-riset-tata">Tata letak foto</label>
+                <select id="f-riset-tata">
+                  <option value="tengah">Rata tengah</option>
+                  <option value="penuh">Lebar penuh</option>
+                </select>
+              </div>
+            </div>
+            <div class="aksi-sub">
+              <button type="button" id="btn-unggah-foto" class="kecil">Unggah &amp; Sisipkan</button>
+              <button type="button" id="btn-tutup-foto" class="sekunder kecil">Batal</button>
+            </div>
+          </div>
+
+          <!-- Panel sisip footnote -->
+          <div id="box-fn" class="sub-box" hidden>
+            <label for="f-fn-teks">Teks catatan kaki (footnote)</label>
+            <input id="f-fn-teks" type="text" placeholder="Contoh: Lihat wawancara dengan narasumber pada 12 Mei 2025.">
+            <div class="aksi-sub">
+              <button type="button" id="btn-tambah-fn" class="kecil">Sisipkan di Posisi Kursor</button>
+              <button type="button" id="btn-tutup-fn" class="sekunder kecil">Batal</button>
+            </div>
+          </div>
+
           <textarea id="t-isi" required></textarea>
-          <p class="petunjuk">Baris kosong = paragraf baru. Baris baru biasa dipertahankan (cocok untuk puisi).</p>
+          <p class="petunjuk">Baris kosong = paragraf baru. Gunakan tombol di atas untuk menyisipkan foto riset (rata tengah / penuh) atau footnote.</p>
 
           <button id="t-simpan" type="submit">Simpan</button>
           <button id="t-batal" class="sekunder" type="button" hidden>Batal edit</button>
           <p id="i-t" class="info" role="status"></p>
         </form>
 
+        <!-- Pratinjau langsung -->
+        <div id="box-pratinjau" class="pratinjau-box" hidden>
+          <div class="pratinjau-head">
+            <span>Pratinjau Tampilan Pembaca</span>
+            <button type="button" id="btn-tutup-pratinjau" class="sekunder kecil">Tutup</button>
+          </div>
+          <div id="isi-pratinjau"></div>
+        </div>
+
         <h2>Daftar tulisan</h2>
+        <input id="cari-admin-t" class="cari-admin" type="search" placeholder="Filter daftar tulisan (judul / penulis / label)...">
         <ul id="l-t"></ul>
       </div>
 
@@ -125,16 +211,16 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/db.js"></script>
-  <script src="js/main.js"></script>
   <script>
   (function () {
     "use strict";
     var $ = function (id) { return document.getElementById(id); };
     var LABEL = { prosa: "Prosa", puisi: "Puisi", lain: "Riset" };
     var BUCKET = "foto";
-    var editT = null;                 // id tulisan yang sedang diedit
-    var editP = null;                 // id penulis yang sedang diedit
+    var editT = null;
+    var editP = null;
     var dataT = [], dataP = [];
+    var adaPerubahan = false;
 
     function esc(s) {
       return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -146,6 +232,210 @@
               .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     }
     function info(el, teks, galat) { el.textContent = teks; el.className = "info" + (galat ? " galat" : ""); }
+
+    /* ---------- Peringatan sebelum keluar jika form belum disimpan ---------- */
+    $("f-tulisan").addEventListener("input", function () { adaPerubahan = true; });
+    window.addEventListener("beforeunload", function (e) {
+      if (adaPerubahan && ($("t-judul").value.trim() || $("t-isi").value.trim())) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+
+    /* ---------- Kompres gambar otomatis sebelum upload ---------- */
+    function kompresGambar(file, maxLebar, kualitas) {
+      return new Promise(function (resolve) {
+        if (!file.type.startsWith("image/") || file.type === "image/gif" || file.type === "image/svg+xml") {
+          resolve({ blob: file, ext: (file.name.split(".").pop() || "jpg").toLowerCase(), type: file.type });
+          return;
+        }
+        var img = new Image();
+        var urlObj = URL.createObjectURL(file);
+        img.onload = function () {
+          URL.revokeObjectURL(urlObj);
+          var w = img.width;
+          var h = img.height;
+          if (w > maxLebar) {
+            h = Math.round(h * (maxLebar / w));
+            w = maxLebar;
+          }
+          var canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function (blob) {
+            if (blob && blob.size < file.size) {
+              resolve({ blob: blob, ext: "webp", type: "image/webp" });
+            } else {
+              resolve({ blob: file, ext: (file.name.split(".").pop() || "jpg").toLowerCase(), type: file.type });
+            }
+          }, "image/webp", kualitas);
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(urlObj);
+          resolve({ blob: file, ext: (file.name.split(".").pop() || "jpg").toLowerCase(), type: file.type });
+        };
+        img.src = urlObj;
+      });
+    }
+
+    /* ---------- Sisip teks di posisi kursor textarea ---------- */
+    function sisipDiKursor(textarea, teks, blokBaru) {
+      var start = textarea.selectionStart != null ? textarea.selectionStart : textarea.value.length;
+      var end = textarea.selectionEnd != null ? textarea.selectionEnd : textarea.value.length;
+      var sebelum = textarea.value.slice(0, start);
+      var sesudah = textarea.value.slice(end);
+
+      if (blokBaru) {
+        var prefix = sebelum.length === 0 ? "" : (/\n\n$/.test(sebelum) ? "" : (/\n$/.test(sebelum) ? "\n" : "\n\n"));
+        var suffix = sesudah.length === 0 ? "\n\n" : (/^\n\n/.test(sesudah) ? "" : (/^\n/.test(sesudah) ? "\n" : "\n\n"));
+        teks = prefix + teks + suffix;
+      }
+
+      textarea.value = sebelum + teks + sesudah;
+      var posisiBaru = sebelum.length + teks.length;
+      textarea.focus();
+      textarea.setSelectionRange(posisiBaru, posisiBaru);
+      adaPerubahan = true;
+    }
+
+    /* ---------- Render konten (sama persis dengan halaman baca) ---------- */
+    function renderKontenHtml(daftarParagraf) {
+      var catatanKaki = [];
+
+      function prosesInline(teks) {
+        var hasil = "";
+        var lastIdx = 0;
+        var re = /\[fn:\s*([\s\S]*?)\]/g;
+        var m;
+        while ((m = re.exec(teks)) !== null) {
+          hasil += esc(teks.slice(lastIdx, m.index));
+          var isiFn = m[1].trim();
+          if (isiFn) {
+            catatanKaki.push(isiFn);
+            var nomor = catatanKaki.length;
+            hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+          }
+          lastIdx = re.lastIndex;
+        }
+        hasil += esc(teks.slice(lastIdx));
+        return hasil;
+      }
+
+      var blokHtml = daftarParagraf.map(function (p) {
+        var mFoto = p.match(/^\[foto:\s*([^|\]]+?)(?:\s*\|\s*(tengah|penuh))?(?:\s*\|\s*([^\]]*))?\]$/i);
+        if (mFoto) {
+          var src = mFoto[1].trim();
+          var tata = (mFoto[2] || "tengah").toLowerCase();
+          var caption = (mFoto[3] || "").trim();
+          return '<figure class="baca-foto baca-foto--' + tata + '">' +
+                 '<img src="' + esc(src) + '" alt="' + esc(caption || "Ilustrasi tulisan") + '" loading="lazy">' +
+                 (caption ? "<figcaption>" + prosesInline(caption) + "</figcaption>" : "") +
+                 "</figure>";
+        }
+        return "<p>" + prosesInline(p) + "</p>";
+      }).join("");
+
+      if (catatanKaki.length) {
+        blokHtml += '<section class="baca-footnote" aria-label="Catatan kaki"><ol>' +
+          catatanKaki.map(function (fn, idx) {
+            var n = idx + 1;
+            return '<li id="fn-' + n + '">' + esc(fn) + ' <a href="#ref-' + n + '" class="fn-balik" aria-label="Kembali ke teks">&#8617;</a></li>';
+          }).join("") +
+          "</ol></section>";
+      }
+
+      return blokHtml;
+    }
+
+    /* ---------- Toolbar: Sisip Foto Riset ---------- */
+    $("btn-sisip-foto").addEventListener("click", function () {
+      $("box-fn").hidden = true;
+      $("box-foto").hidden = !$("box-foto").hidden;
+      if (!$("box-foto").hidden) $("f-riset-file").focus();
+    });
+    $("btn-tutup-foto").addEventListener("click", function () { $("box-foto").hidden = true; });
+
+    $("btn-unggah-foto").addEventListener("click", async function () {
+      var file = $("f-riset-file").files[0];
+      if (!file) { info($("i-t"), "Pilih file gambar terlebih dahulu.", true); return; }
+      if (file.size > 8 * 1024 * 1024) { info($("i-t"), "Ukuran gambar mentah maksimal 8 MB.", true); return; }
+
+      var btn = $("btn-unggah-foto");
+      btn.disabled = true;
+      $("status-toolbar").textContent = "Mengompres & mengunggah...";
+      info($("i-t"), "");
+
+      try {
+        var hasilKompres = await kompresGambar(file, 1400, 0.85);
+        var namaDasar = slug($("t-judul").value.trim() || "riset") || "riset";
+        var path = "riset/" + namaDasar + "-" + Date.now() + "." + hasilKompres.ext;
+        var up = await db.storage.from(BUCKET).upload(path, hasilKompres.blob, {
+          contentType: hasilKompres.type || file.type
+        });
+        if (up.error) {
+          info($("i-t"), "Gagal mengunggah foto: " + up.error.message, true);
+          return;
+        }
+        var publicUrl = db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        var tata = $("f-riset-tata").value;
+        var caption = $("f-riset-caption").value.trim().replace(/[\[\]|]/g, "-");
+        var tag = "[foto: " + publicUrl + " | " + tata + (caption ? " | " + caption : "") + "]";
+
+        sisipDiKursor($("t-isi"), tag, true);
+
+        $("f-riset-file").value = "";
+        $("f-riset-caption").value = "";
+        $("f-riset-tata").value = "tengah";
+        $("box-foto").hidden = true;
+        $("status-toolbar").textContent = "Foto disisipkan.";
+        setTimeout(function () { $("status-toolbar").textContent = ""; }, 3000);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    /* ---------- Toolbar: Sisip Footnote ---------- */
+    $("btn-sisip-fn").addEventListener("click", function () {
+      $("box-foto").hidden = true;
+      $("box-fn").hidden = !$("box-fn").hidden;
+      if (!$("box-fn").hidden) $("f-fn-teks").focus();
+    });
+    $("btn-tutup-fn").addEventListener("click", function () { $("box-fn").hidden = true; });
+
+    function eksekusiSisipFn() {
+      var teksFn = $("f-fn-teks").value.trim().replace(/[\[\]]/g, "");
+      if (!teksFn) { info($("i-t"), "Isi teks footnote tidak boleh kosong.", true); return; }
+      info($("i-t"), "");
+      sisipDiKursor($("t-isi"), "[fn: " + teksFn + "]", false);
+      $("f-fn-teks").value = "";
+      $("box-fn").hidden = true;
+      $("status-toolbar").textContent = "Footnote disisipkan.";
+      setTimeout(function () { $("status-toolbar").textContent = ""; }, 3000);
+    }
+    $("btn-tambah-fn").addEventListener("click", eksekusiSisipFn);
+    $("f-fn-teks").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); eksekusiSisipFn(); }
+    });
+
+    /* ---------- Toolbar: Pratinjau ---------- */
+    $("btn-pratinjau").addEventListener("click", function () {
+      var judul = $("t-judul").value.trim() || "(Tanpa Judul)";
+      var label = $("t-label").value.trim() || "Prosa";
+      var penulis = $("t-penulis").value.trim() || "Penulis";
+      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+
+      $("isi-pratinjau").innerHTML =
+        '<span class="label">' + esc(label) + ": " + esc(penulis) + '</span><br>' +
+        '<h1 class="judul-garis">' + esc(judul) + '</h1>' +
+        '<div class="baca-isi">' + renderKontenHtml(isi) + '</div>';
+      $("box-pratinjau").hidden = false;
+      $("box-pratinjau").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    $("btn-tutup-pratinjau").addEventListener("click", function () {
+      $("box-pratinjau").hidden = true;
+    });
 
     /* ---------- Sesi ---------- */
     function tampil(masuk) {
@@ -179,15 +469,24 @@
     /* ---------- Muat data ---------- */
     async function muat() { await muatP(); await muatT(); }
 
+    function renderDaftarT() {
+      var q = ($("cari-admin-t").value || "").trim().toLowerCase();
+      var saring = dataT.filter(function (t) {
+        return !q || (t.label + " " + t.judul + " " + t.penulis).toLowerCase().indexOf(q) !== -1;
+      });
+      $("l-t").innerHTML = saring.length ? saring.map(function (t) {
+        return '<li><span><strong>' + esc(t.label) + ':</strong> ' + esc(t.judul) + ' <span style="color:#666">(' + esc(t.penulis) + ')</span></span>' +
+          '<span class="aksi-grup"><button class="sekunder kecil" data-aksi="edit-t" data-id="' + esc(t.id) + '">Edit</button>' +
+          '<button class="sekunder kecil" data-aksi="hapus-t" data-id="' + esc(t.id) + '">Hapus</button></span></li>';
+      }).join("") : "<li>Tidak ada tulisan ditemukan.</li>";
+    }
+    $("cari-admin-t").addEventListener("input", renderDaftarT);
+
     async function muatT() {
       var r = await db.from("tulisan").select("*").order("dibuat", { ascending: false });
       if (r.error) { info($("i-t"), "Gagal memuat: " + r.error.message, true); return; }
       dataT = r.data;
-      $("l-t").innerHTML = dataT.length ? dataT.map(function (t) {
-        return '<li><span>' + esc(t.label) + ': ' + esc(t.judul) + '</span><span>' +
-          '<button class="sekunder kecil" data-aksi="edit-t" data-id="' + esc(t.id) + '">Edit</button>' +
-          '<button class="sekunder kecil" data-aksi="hapus-t" data-id="' + esc(t.id) + '">Hapus</button></span></li>';
-      }).join("") : "<li>Belum ada tulisan.</li>";
+      renderDaftarT();
     }
 
     async function muatP() {
@@ -196,8 +495,8 @@
       dataP = r.data;
       $("daftar-penulis").innerHTML = dataP.map(function (p) { return '<option value="' + esc(p.nama) + '">'; }).join("");
       $("l-p").innerHTML = dataP.length ? dataP.map(function (p) {
-        return '<li><span>' + (p.foto ? '<img class="mini" src="' + esc(p.foto) + '" alt="">' : "") + esc(p.nama) + '</span><span>' +
-          '<button class="sekunder kecil" data-aksi="edit-p" data-id="' + esc(p.id) + '">Edit</button>' +
+        return '<li><span>' + (p.foto ? '<img class="mini" src="' + esc(p.foto) + '" alt="">' : "") + esc(p.nama) + '</span>' +
+          '<span class="aksi-grup"><button class="sekunder kecil" data-aksi="edit-p" data-id="' + esc(p.id) + '">Edit</button>' +
           '<button class="sekunder kecil" data-aksi="hapus-p" data-id="' + esc(p.id) + '">Hapus</button></span></li>';
       }).join("") : "<li>Belum ada penulis.</li>";
     }
@@ -209,10 +508,14 @@
 
     function resetT() {
       editT = null;
+      adaPerubahan = false;
       $("f-tulisan").reset();
       $("t-label").value = "Prosa";
       $("jdl-t").textContent = "Tulisan baru";
       $("t-batal").hidden = true;
+      $("box-foto").hidden = true;
+      $("box-fn").hidden = true;
+      $("box-pratinjau").hidden = true;
     }
     $("t-batal").addEventListener("click", function () { resetT(); info($("i-t"), ""); });
 
@@ -254,6 +557,7 @@
       if (!t) return;
       if (b.dataset.aksi === "edit-t") {
         editT = t.id;
+        adaPerubahan = false;
         $("t-judul").value = t.judul;
         $("t-jenis").value = t.jenis;
         $("t-label").value = t.label;
@@ -261,6 +565,7 @@
         $("t-isi").value = t.isi.join("\n\n");
         $("jdl-t").textContent = "Edit tulisan";
         $("t-batal").hidden = false;
+        $("box-pratinjau").hidden = true;
         info($("i-t"), "");
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else if (b.dataset.aksi === "hapus-t") {

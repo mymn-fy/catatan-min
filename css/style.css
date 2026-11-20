@@ -276,6 +276,79 @@ main {
   white-space: pre-line;
 }
 
+/* ===== Foto Riset di Halaman Baca ===== */
+.baca-foto {
+  margin: 32px 0;
+}
+.baca-foto img {
+  display: block;
+  height: auto;
+}
+.baca-foto--tengah {
+  text-align: center;
+}
+.baca-foto--tengah img {
+  max-width: min(640px, 100%);
+  margin: 0 auto;
+}
+.baca-foto--penuh img {
+  width: 100%;
+}
+.baca-foto figcaption {
+  margin-top: 8px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #555;
+}
+.baca-foto--tengah figcaption {
+  max-width: min(640px, 100%);
+  margin-inline: auto;
+}
+
+/* ===== Footnote (Catatan Kaki) ===== */
+.fn-ref {
+  line-height: 0;
+  font-size: 0.75em;
+}
+.fn-ref a {
+  color: var(--green);
+  text-decoration: none;
+  padding: 0 2px;
+}
+.fn-ref a:hover {
+  text-decoration: underline;
+}
+
+.baca-footnote {
+  margin-top: 48px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ink);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #333;
+}
+.baca-footnote ol {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.baca-footnote li:target {
+  background: rgba(44, 74, 42, 0.1);
+  padding: 2px 4px;
+}
+.fn-balik {
+  color: var(--green);
+  text-decoration: none;
+  margin-left: 4px;
+}
+.fn-balik:hover {
+  text-decoration: underline;
+}
+
 /* ===== Halaman kategori / penulis ===== */
 .judul-halaman {
   margin: 0 0 44px;
