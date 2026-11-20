@@ -4,25 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prosa | Catatan Min</title>
+  <link rel="preload" href="../assets/fonts/GLCGaramond-Normal.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="../assets/fonts/GLCGaramond-Italic.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body data-root="../" data-page="kategori" data-kategori="prosa">
   <header class="site-header">
-    <nav class="nav" aria-label="Navigasi utama">
-      <a href="../index.html">Catatan Min</a>
-      <span class="sep" aria-hidden="true"></span>
-      <span class="grup">
-        <a href="../catatan/prosa.html">Prosa</a>
-        <a href="../catatan/puisi.html">Puisi</a>
-        <a href="../catatan/lain-lain.html">Lain-Lain</a>
-      </span>
-      <span class="sep" aria-hidden="true"></span>
-      <a href="../penulis.html">Penulis</a>
-    </nav>
-    <label class="search">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="9"/><line x1="20" y1="20" x2="29" y2="29"/></svg>
-      <input id="cari" type="search" placeholder="Judul / Penulis / Isi" autocomplete="off" aria-label="Cari tulisan">
-    </label>
+    <button class="hamburger" type="button" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="menu-drawer">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+    </button>
+
+    <a href="../index.html" class="brand">Catatan Min</a>
+
+    <div class="menu-panel" id="menu-drawer">
+      <nav class="nav" aria-label="Navigasi utama">
+        <span class="sep" aria-hidden="true"></span>
+        <span class="grup">
+          <a href="prosa.html">Prosa</a>
+          <a href="puisi.html">Puisi</a>
+          <a href="lain-lain.html">Lain-Lain</a>
+        </span>
+        <span class="sep" aria-hidden="true"></span>
+        <a href="../penulis.html">Penulis</a>
+      </nav>
+      <label class="search">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="9"/><line x1="20" y1="20" x2="29" y2="29"/></svg>
+        <input id="cari" type="search" placeholder="Judul / Penulis / Isi" autocomplete="off" aria-label="Cari tulisan">
+      </label>
+    </div>
   </header>
 
   <main>

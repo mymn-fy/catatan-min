@@ -1,7 +1,76 @@
 (async function () {
   "use strict";
 
+  /* ---------- Navbar Mobile (Hamburger Menu) ---------- */
+  var header = document.querySelector(".site-header");
+  var hamburger = document.querySelector(".hamburger");
+  var menuPanel = document.querySelector(".menu-panel");
+
+  if (header && hamburger && menuPanel) {
+    var bukaMenu = function () {
+      header.classList.add("is-open");
+      hamburger.setAttribute("aria-expanded", "true");
+      hamburger.setAttribute("aria-label", "Tutup menu navigasi");
+    };
+
+    var tutupMenu = function () {
+      header.classList.remove("is-open");
+      hamburger.setAttribute("aria-expanded", "false");
+      hamburger.setAttribute("aria-label", "Buka menu navigasi");
+    };
+
+    hamburger.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (header.classList.contains("is-open")) tutupMenu();
+      else bukaMenu();
+    });
+
+    menuPanel.querySelectorAll("a").forEach(function (link) {
+      link.addEventListener("click", tutupMenu);
+    });
+
+    document.addEventListener("click", function (e) {
+      if (header.classList.contains("is-open") && !header.contains(e.target)) {
+        tutupMenu();
+      }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && header.classList.contains("is-open")) {
+        tutupMenu();
+        hamburger.focus();
+      }
+    });
+  }
+
   var body = document.body;
+
+  /* ---------- Efek Grid Background Mengikuti Kursor ---------- */
+  if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    var rafGrid = null;
+    var posX = -500;
+    var posY = -500;
+
+    document.addEventListener("mousemove", function (e) {
+      posX = e.clientX;
+      posY = e.clientY;
+      if (!body.classList.contains("cursor-active")) {
+        body.classList.add("cursor-active");
+      }
+      if (!rafGrid) {
+        rafGrid = requestAnimationFrame(function () {
+          body.style.setProperty("--mx", posX + "px");
+          body.style.setProperty("--my", posY + "px");
+          rafGrid = null;
+        });
+      }
+    }, { passive: true });
+
+    document.addEventListener("mouseleave", function () {
+      body.classList.remove("cursor-active");
+    });
+  }
+
   var root = body.dataset.root || "";       // "" (root) atau "../" (folder catatan)
   var halaman = body.dataset.page;          // index | kategori | baca | penulis
   var PER_HALAMAN = 9;
@@ -123,9 +192,15 @@
     input.addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
       e.preventDefault();
-      // Halaman tanpa daftar tulisan -> arahkan ke beranda dengan kata kunci
       if (halaman === "baca") {
         location.href = root + "index.html?q=" + encodeURIComponent(input.value.trim());
+      } else if (header && header.classList.contains("is-open")) {
+        // Tutup menu mobile setelah menekan Enter saat mencari
+        header.classList.remove("is-open");
+        if (hamburger) {
+          hamburger.setAttribute("aria-expanded", "false");
+          hamburger.setAttribute("aria-label", "Buka menu navigasi");
+        }
       }
     });
   }
