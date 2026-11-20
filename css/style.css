@@ -1,0 +1,384 @@
+/* ===== Font: GLC Garamond ===== */
+@font-face {
+  font-family: "GLC Garamond";
+  src: url("../assets/fonts/GLCGaramond-Normal.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "GLC Garamond";
+  src: url("../assets/fonts/GLCGaramond-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "GLC Garamond";
+  src: url("../assets/fonts/GLCGaramond-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #000;
+  --paper: #fff;
+  --green: #2c4a2a;
+  --grey: #9a9a9a;
+  --gutter: clamp(20px, 5.7vw, 82px);
+  --serif: "GLC Garamond", Garamond, "Times New Roman", serif;
+  --sans: Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  padding: 0 var(--gutter) 64px;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
+/* ===== Header (garis hitam + liquid glass) ===== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 32px var(--gutter);
+  border-bottom: 1px solid var(--ink);
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+.site-header > * {
+  position: relative;
+}
+
+.site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(120, 140, 150, 0.14) 47%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(120, 140, 150, 0.1) 53%,
+    transparent 65%
+  );
+  background-size: 250% 100%;
+  background-position: 120% 0;
+  animation: kilau-kaca 8s ease-in-out infinite;
+}
+@keyframes kilau-kaca {
+  0% {
+    background-position: 120% 0;
+  }
+  60%,
+  100% {
+    background-position: -20% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header::before {
+    animation: none;
+  }
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: clamp(30px, 3.47vw, 54px);
+  line-height: 1.1;
+}
+.nav .sep {
+  display: inline-block;
+  width: 1px;
+  height: 1.1em;
+  background: var(--ink);
+  margin: 0 22px;
+}
+.nav .grup {
+  display: flex;
+  gap: 20px;
+}
+.nav .grup a {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(280px, 100%);
+  height: 60px;
+  padding: 0 12px;
+  border: 1px solid var(--grey);
+  background: rgba(255, 255, 255, 0.5);
+}
+.search svg {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  stroke: var(--grey);
+  fill: none;
+  stroke-width: 2;
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 34px;
+  color: var(--ink);
+}
+.search input::placeholder {
+  color: var(--grey);
+  opacity: 1;
+}
+.search:focus-within {
+  border-color: var(--ink);
+}
+
+main {
+  margin-top: clamp(56px, 9vw, 130px);
+}
+
+/* ===== Label + judul bergaris ===== */
+.label {
+  font-style: italic;
+  font-size: clamp(18px, 1.8vw, 28px);
+  color: var(--green);
+  line-height: 0.95;
+}
+.judul-garis {
+  display: inline-block;
+  margin: 0;
+  padding-bottom: 3px;
+  font-size: clamp(30px, 3.54vw, 56px);
+  line-height: 1;
+  font-weight: 400;
+  border-bottom: 2px solid var(--ink);
+}
+
+/* ===== Daftar (beranda) ===== */
+.daftar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.daftar .label {
+  display: block;
+  margin-bottom: -6px;
+}
+
+/* ===== Halaman baca ===== */
+.baca-isi {
+  margin-top: 40px;
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.4;
+}
+.baca-isi p {
+  margin: 0 0 24px;
+  white-space: pre-line;
+}
+
+/* ===== Halaman kategori / penulis ===== */
+.judul-halaman {
+  margin: 0 0 44px;
+  font-size: clamp(30px, 3.47vw, 54px);
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.kartu {
+  padding: 0 36px 40px;
+}
+.kartu:nth-child(3n + 1) {
+  padding-left: 0;
+}
+.kartu:nth-child(3n) {
+  padding-right: 0;
+}
+.kartu:nth-child(3n + 2),
+.kartu:nth-child(3n) {
+  border-left: 1px solid var(--ink);
+}
+.kartu .foto {
+  display: block;
+  width: 138px;
+  height: 144px;
+  object-fit: cover;
+  margin-bottom: 20px;
+}
+.kartu h2 {
+  margin: 0;
+  font-size: clamp(28px, 3.1vw, 48px);
+  line-height: 1.05;
+  font-weight: 400;
+}
+.kartu .label {
+  display: block;
+  margin: 4px 0 12px;
+}
+.kartu hr {
+  border: 0;
+  border-top: 2px solid var(--ink);
+  margin: 0 0 12px;
+}
+.kartu p {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: justify;
+}
+
+.kosong {
+  margin: 0;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--grey);
+}
+
+/* ===== Penomoran halaman ===== */
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 30px;
+  font-weight: 700;
+}
+.pager button {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--ink);
+}
+.pager button[disabled] {
+  color: var(--grey);
+  cursor: default;
+}
+.pager[hidden] {
+  display: none;
+}
+
+/* ===== Responsif ===== */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .kartu,
+  .kartu:nth-child(n) {
+    padding: 0 24px 32px;
+    border-left: 0;
+  }
+  .kartu:nth-child(2n + 1) {
+    padding-left: 0;
+  }
+  .kartu:nth-child(2n) {
+    padding-right: 0;
+    border-left: 1px solid var(--ink);
+  }
+}
+@media (max-width: 600px) {
+  .site-header {
+    padding-block: 20px;
+  }
+  .nav .sep {
+    margin: 0 10px;
+  }
+  .nav .grup {
+    gap: 12px;
+  }
+  .search {
+    width: 100%;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .kartu,
+  .kartu:nth-child(n) {
+    padding: 0 0 32px;
+    border-left: 0;
+  }
+}
+
+/* ===== Beranda: garis muncul saat hover + kaca buram (desktop saja) ===== */
+@media (hover: hover) and (min-width: 901px) {
+  .daftar li {
+    align-self: flex-start;
+    position: relative;
+  }
+  .daftar li:hover {
+    z-index: 60;
+  }
+
+  .daftar .judul-garis {
+    border-bottom: 2px solid transparent;
+    background: linear-gradient(var(--ink), var(--ink)) no-repeat left bottom /
+      0 2px;
+    transition: background-size 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .daftar li:hover .judul-garis {
+    background-size: 100% 2px;
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.35);
+    -webkit-backdrop-filter: blur(10px) saturate(1.4);
+    backdrop-filter: blur(10px) saturate(1.4);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  body:has(.daftar li:hover)::after {
+    opacity: 1;
+  }
+}

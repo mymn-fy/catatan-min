@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catatan Min</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-root="" data-page="index">
+  <header class="site-header">
+    <nav class="nav" aria-label="Navigasi utama">
+      <a href="index.html">Catatan Min</a>
+      <span class="sep" aria-hidden="true"></span>
+      <span class="grup">
+        <a href="catatan/prosa.html">Prosa</a>
+        <a href="catatan/puisi.html">Puisi</a>
+        <a href="catatan/lain-lain.html">Lain-Lain</a>
+      </span>
+      <span class="sep" aria-hidden="true"></span>
+      <a href="penulis.html">Penulis</a>
+    </nav>
+    <label class="search">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="9"/><line x1="20" y1="20" x2="29" y2="29"/></svg>
+      <input id="cari" type="search" placeholder="Judul / Penulis / Isi" autocomplete="off" aria-label="Cari tulisan">
+    </label>
+  </header>
+
+  <main>
+    <div id="konten"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/db.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

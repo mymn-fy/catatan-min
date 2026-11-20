@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin | Catatan Min</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .adm { max-width: 760px; margin: 48px auto 0; font-family: var(--sans); font-size: 15px; }
+    .adm h1 { font-family: var(--serif); font-weight: 400; font-size: 44px; margin: 0 0 24px; }
+    .adm h2 { font-family: var(--serif); font-weight: 400; font-size: 30px; margin: 40px 0 12px; }
+    .adm label { display: block; margin: 14px 0 4px; }
+    .adm input, .adm select, .adm textarea {
+      width: 100%; padding: 10px; font: inherit; border: 1px solid var(--ink); background: #fff; border-radius: 0;
+    }
+    .adm textarea { min-height: 220px; line-height: 1.4; }
+    .adm button { font: inherit; padding: 10px 18px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; margin: 16px 8px 0 0; }
+    .adm button.sekunder { background: #fff; color: var(--ink); }
+    .adm button.kecil { padding: 4px 10px; margin: 0 0 0 6px; }
+    .adm .atas { display: flex; justify-content: space-between; align-items: center; }
+    .adm .tab { margin: 0 0 8px; }
+    .adm .tab button { margin-top: 0; }
+    .adm .tab button.aktif { background: var(--ink); color: #fff; }
+    .adm .tab button:not(.aktif) { background: #fff; color: var(--ink); }
+    .adm ul { list-style: none; padding: 0; margin: 0; }
+    .adm li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ccc; }
+    .adm .info { margin: 12px 0 0; min-height: 1.4em; }
+    .adm .galat { color: #b00020; }
+    .adm .petunjuk { color: #666; font-size: 13px; margin: 4px 0 0; }
+    .adm img.mini { width: 48px; height: 48px; object-fit: cover; margin-right: 12px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="adm">
+    <div class="atas">
+      <h1>Admin</h1>
+      <div><a href="index.html">Lihat situs</a> <button id="keluar" class="sekunder kecil" type="button" hidden>Keluar</button></div>
+    </div>
+
+    <!-- LOGIN -->
+    <section id="login">
+      <form id="f-login">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="sandi">Kata sandi</label>
+        <input id="sandi" type="password" autocomplete="current-password" required>
+        <button type="submit">Masuk</button>
+        <p id="i-login" class="info" role="status"></p>
+      </form>
+    </section>
+
+    <!-- PANEL -->
+    <section id="panel" hidden>
+      <div class="tab">
+        <button id="tab-t" class="aktif" type="button">Tulisan</button>
+        <button id="tab-p" type="button">Penulis</button>
+      </div>
+
+      <!-- TULISAN -->
+      <div id="bag-t">
+        <h2 id="jdl-t">Tulisan baru</h2>
+        <form id="f-tulisan">
+          <label for="t-judul">Judul</label>
+          <input id="t-judul" required>
+
+          <label for="t-jenis">Jenis</label>
+          <select id="t-jenis">
+            <option value="prosa">Prosa</option>
+            <option value="puisi">Puisi</option>
+            <option value="lain">Lain-Lain</option>
+          </select>
+
+          <label for="t-label">Label di atas judul</label>
+          <input id="t-label" value="Prosa" required>
+          <p class="petunjuk">Contoh: Prosa, Puisi, Riset.</p>
+
+          <label for="t-penulis">Penulis</label>
+          <input id="t-penulis" list="daftar-penulis" required>
+          <datalist id="daftar-penulis"></datalist>
+
+          <label for="t-isi">Isi</label>
+          <textarea id="t-isi" required></textarea>
+          <p class="petunjuk">Baris kosong = paragraf baru. Baris baru biasa dipertahankan (cocok untuk puisi).</p>
+
+          <button id="t-simpan" type="submit">Simpan</button>
+          <button id="t-batal" class="sekunder" type="button" hidden>Batal edit</button>
+          <p id="i-t" class="info" role="status"></p>
+        </form>
+
+        <h2>Daftar tulisan</h2>
+        <ul id="l-t"></ul>
+      </div>
+
+      <!-- PENULIS -->
+      <div id="bag-p" hidden>
+        <h2 id="jdl-p">Penulis baru</h2>
+        <form id="f-penulis">
+          <label for="p-nama">Nama</label>
+          <input id="p-nama" required>
+
+          <label for="p-label">Label</label>
+          <input id="p-label" value="Penulis" required>
+
+          <label for="p-bio">Bio</label>
+          <textarea id="p-bio" style="min-height:120px"></textarea>
+
+          <label for="p-foto">Foto (maks. 2 MB)</label>
+          <input id="p-foto" type="file" accept="image/*">
+          <p class="petunjuk">Kosongkan jika tidak ingin mengganti foto.</p>
+
+          <button id="p-simpan" type="submit">Simpan</button>
+          <button id="p-batal" class="sekunder" type="button" hidden>Batal edit</button>
+          <p id="i-p" class="info" role="status"></p>
+        </form>
+
+        <h2>Daftar penulis</h2>
+        <ul id="l-p"></ul>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/db.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var $ = function (id) { return document.getElementById(id); };
+    var LABEL = { prosa: "Prosa", puisi: "Puisi", lain: "Riset" };
+    var BUCKET = "foto";
+    var editT = null;                 // id tulisan yang sedang diedit
+    var editP = null;                 // id penulis yang sedang diedit
+    var dataT = [], dataP = [];
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function slug(s) {
+      return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    }
+    function info(el, teks, galat) { el.textContent = teks; el.className = "info" + (galat ? " galat" : ""); }
+
+    /* ---------- Sesi ---------- */
+    function tampil(masuk) {
+      $("login").hidden = masuk;
+      $("panel").hidden = !masuk;
+      $("keluar").hidden = !masuk;
+      if (masuk) muat();
+    }
+    db.auth.getSession().then(function (r) { tampil(!!(r.data && r.data.session)); });
+
+    $("f-login").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var r = await db.auth.signInWithPassword({ email: $("email").value.trim(), password: $("sandi").value });
+      if (r.error) { info($("i-login"), "Gagal masuk: " + r.error.message, true); return; }
+      $("sandi").value = "";
+      info($("i-login"), "");
+      tampil(true);
+    });
+    $("keluar").addEventListener("click", async function () { await db.auth.signOut(); tampil(false); });
+
+    /* ---------- Tab ---------- */
+    function pilihTab(t) {
+      $("bag-t").hidden = t !== "t";
+      $("bag-p").hidden = t !== "p";
+      $("tab-t").className = t === "t" ? "aktif" : "";
+      $("tab-p").className = t === "p" ? "aktif" : "";
+    }
+    $("tab-t").addEventListener("click", function () { pilihTab("t"); });
+    $("tab-p").addEventListener("click", function () { pilihTab("p"); });
+
+    /* ---------- Muat data ---------- */
+    async function muat() { await muatP(); await muatT(); }
+
+    async function muatT() {
+      var r = await db.from("tulisan").select("*").order("dibuat", { ascending: false });
+      if (r.error) { info($("i-t"), "Gagal memuat: " + r.error.message, true); return; }
+      dataT = r.data;
+      $("l-t").innerHTML = dataT.length ? dataT.map(function (t) {
+        return '<li><span>' + esc(t.label) + ': ' + esc(t.judul) + '</span><span>' +
+          '<button class="sekunder kecil" data-aksi="edit-t" data-id="' + esc(t.id) + '">Edit</button>' +
+          '<button class="sekunder kecil" data-aksi="hapus-t" data-id="' + esc(t.id) + '">Hapus</button></span></li>';
+      }).join("") : "<li>Belum ada tulisan.</li>";
+    }
+
+    async function muatP() {
+      var r = await db.from("penulis").select("*").order("nama");
+      if (r.error) { info($("i-p"), "Gagal memuat: " + r.error.message, true); return; }
+      dataP = r.data;
+      $("daftar-penulis").innerHTML = dataP.map(function (p) { return '<option value="' + esc(p.nama) + '">'; }).join("");
+      $("l-p").innerHTML = dataP.length ? dataP.map(function (p) {
+        return '<li><span>' + (p.foto ? '<img class="mini" src="' + esc(p.foto) + '" alt="">' : "") + esc(p.nama) + '</span><span>' +
+          '<button class="sekunder kecil" data-aksi="edit-p" data-id="' + esc(p.id) + '">Edit</button>' +
+          '<button class="sekunder kecil" data-aksi="hapus-p" data-id="' + esc(p.id) + '">Hapus</button></span></li>';
+      }).join("") : "<li>Belum ada penulis.</li>";
+    }
+
+    /* ---------- Form tulisan ---------- */
+    $("t-jenis").addEventListener("change", function () {
+      if (!editT) $("t-label").value = LABEL[$("t-jenis").value];
+    });
+
+    function resetT() {
+      editT = null;
+      $("f-tulisan").reset();
+      $("t-label").value = "Prosa";
+      $("jdl-t").textContent = "Tulisan baru";
+      $("t-batal").hidden = true;
+    }
+    $("t-batal").addEventListener("click", function () { resetT(); info($("i-t"), ""); });
+
+    $("f-tulisan").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var judul = $("t-judul").value.trim();
+      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!judul || !isi.length) { info($("i-t"), "Judul dan isi wajib diisi.", true); return; }
+
+      var baris = {
+        jenis: $("t-jenis").value,
+        label: $("t-label").value.trim(),
+        penulis: $("t-penulis").value.trim(),
+        judul: judul,
+        isi: isi
+      };
+      var r;
+      if (editT) {
+        r = await db.from("tulisan").update(baris).eq("id", editT);
+      } else {
+        baris.id = slug(judul);
+        if (!baris.id) { info($("i-t"), "Judul tidak valid untuk dijadikan alamat.", true); return; }
+        r = await db.from("tulisan").insert(baris);
+      }
+      if (r.error) {
+        var dobel = r.error.code === "23505";
+        info($("i-t"), dobel ? "Sudah ada tulisan dengan judul serupa. Ubah judulnya." : "Gagal menyimpan: " + r.error.message, true);
+        return;
+      }
+      info($("i-t"), editT ? "Tulisan diperbarui." : "Tulisan tersimpan.");
+      resetT();
+      muatT();
+    });
+
+    $("l-t").addEventListener("click", async function (e) {
+      var b = e.target.closest("button[data-aksi]");
+      if (!b) return;
+      var t = dataT.filter(function (x) { return x.id === b.dataset.id; })[0];
+      if (!t) return;
+      if (b.dataset.aksi === "edit-t") {
+        editT = t.id;
+        $("t-judul").value = t.judul;
+        $("t-jenis").value = t.jenis;
+        $("t-label").value = t.label;
+        $("t-penulis").value = t.penulis;
+        $("t-isi").value = t.isi.join("\n\n");
+        $("jdl-t").textContent = "Edit tulisan";
+        $("t-batal").hidden = false;
+        info($("i-t"), "");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (b.dataset.aksi === "hapus-t") {
+        if (!confirm('Hapus "' + t.judul + '"? Tindakan ini tidak bisa dibatalkan.')) return;
+        var r = await db.from("tulisan").delete().eq("id", t.id);
+        if (r.error) info($("i-t"), "Gagal menghapus: " + r.error.message, true);
+        else { if (editT === t.id) resetT(); info($("i-t"), "Tulisan dihapus."); muatT(); }
+      }
+    });
+
+    /* ---------- Form penulis ---------- */
+    function resetP() {
+      editP = null;
+      $("f-penulis").reset();
+      $("p-label").value = "Penulis";
+      $("jdl-p").textContent = "Penulis baru";
+      $("p-batal").hidden = true;
+    }
+    $("p-batal").addEventListener("click", function () { resetP(); info($("i-p"), ""); });
+
+    $("f-penulis").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var nama = $("p-nama").value.trim();
+      var file = $("p-foto").files[0];
+      if (!nama) { info($("i-p"), "Nama wajib diisi.", true); return; }
+      if (file && file.size > 2 * 1024 * 1024) { info($("i-p"), "Ukuran foto melebihi 2 MB.", true); return; }
+
+      var id = editP || slug(nama);
+      if (!id) { info($("i-p"), "Nama tidak valid.", true); return; }
+      var baris = { nama: nama, label: $("p-label").value.trim(), bio: $("p-bio").value.trim() };
+
+      if (file) {
+        var ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+        var path = id + "-" + Date.now() + "." + ext;
+        var up = await db.storage.from(BUCKET).upload(path, file, { contentType: file.type });
+        if (up.error) { info($("i-p"), "Gagal mengunggah foto: " + up.error.message, true); return; }
+        baris.foto = db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      }
+
+      var r;
+      if (editP) r = await db.from("penulis").update(baris).eq("id", editP);
+      else { baris.id = id; r = await db.from("penulis").insert(baris); }
+
+      if (r.error) {
+        info($("i-p"), r.error.code === "23505" ? "Penulis dengan nama serupa sudah ada." : "Gagal menyimpan: " + r.error.message, true);
+        return;
+      }
+      info($("i-p"), editP ? "Penulis diperbarui." : "Penulis tersimpan.");
+      resetP();
+      muatP();
+    });
+
+    $("l-p").addEventListener("click", async function (e) {
+      var b = e.target.closest("button[data-aksi]");
+      if (!b) return;
+      var p = dataP.filter(function (x) { return x.id === b.dataset.id; })[0];
+      if (!p) return;
+      if (b.dataset.aksi === "edit-p") {
+        editP = p.id;
+        $("p-nama").value = p.nama;
+        $("p-label").value = p.label;
+        $("p-bio").value = p.bio || "";
+        $("p-foto").value = "";
+        $("jdl-p").textContent = "Edit penulis";
+        $("p-batal").hidden = false;
+        info($("i-p"), "");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (b.dataset.aksi === "hapus-p") {
+        if (!confirm('Hapus penulis "' + p.nama + '"?')) return;
+        var r = await db.from("penulis").delete().eq("id", p.id);
+        if (r.error) info($("i-p"), "Gagal menghapus: " + r.error.message, true);
+        else { if (editP === p.id) resetP(); info($("i-p"), "Penulis dihapus."); muatP(); }
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
