@@ -312,7 +312,7 @@ main {
 .teks-garamond {
   font-family: var(--serif);
   font-size: 1.15em;
-  line-height: 1.55;
+  line-height: 0.95;
 }
 .teks-sans {
   font-family: var(--sans);
