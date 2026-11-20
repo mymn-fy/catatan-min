@@ -77,6 +77,10 @@
   var EXCERPT = 210;
   var PANAH_KIRI = '<svg width="14" height="22" viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="11,2 3,11 11,20"/></svg>';
   var PANAH_KANAN = '<svg width="14" height="22" viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,2 11,11 3,20"/></svg>';
+  var BULAN = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
 
   var input = document.getElementById("cari");
   var wadah = document.getElementById("konten");
@@ -99,10 +103,6 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
-  var BULAN = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-  ];
   function formatTanggalHtml(tglStr) {
     if (!tglStr) return "";
     var p = String(tglStr).split("-");
@@ -114,8 +114,12 @@
   }
   function bersihkanTag(teks) {
     return String(teks || "")
+      .replace(/\[gaya:[^\]]*\]/gi, " ")
       .replace(/\[foto:[^\]]*\]/gi, " ")
       .replace(/\[fn:[^\]]*\]/gi, "")
+      .replace(/\[\/?(?:font|size)(?::[^\]]*)?\]/gi, "")
+      .replace(/\[spasi\]/gi, " ")
+      .replace(/\*{1,2}([^*]+?)\*{1,2}/g, "$1")
       .replace(/\s+/g, " ")
       .trim();
   }
@@ -132,30 +136,45 @@
   }
   function param(nama) { return new URLSearchParams(location.search).get(nama) || ""; }
 
-  /* ---------- Render Isi Bacaan (Paragraf, Foto Riset & Footnote) ---------- */
+  /* ---------- Render Isi Bacaan (Format Teks, Puisi, Foto Riset & Footnote) ---------- */
   function renderIsiBaca(daftarParagraf) {
     var catatanKaki = [];
 
-    function prosesInline(teks) {
+    function prosesFormatTeks(str) {
       var hasil = "";
+      var re = /(\[fn:\s*([\s\S]*?)\])|(\[font:(garamond|sans)\]([\s\S]*?)\[\/font\])|(\[size:(\d{2})\]([\s\S]*?)\[\/size\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
       var lastIdx = 0;
-      var re = /\[fn:\s*([\s\S]*?)\]/g;
       var m;
-      while ((m = re.exec(teks)) !== null) {
-        hasil += esc(teks.slice(lastIdx, m.index));
-        var isiFn = m[1].trim();
-        if (isiFn) {
-          catatanKaki.push(isiFn);
-          var nomor = catatanKaki.length;
-          hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+      while ((m = re.exec(str)) !== null) {
+        hasil += esc(str.slice(lastIdx, m.index));
+        if (m[1]) {
+          var isiFn = m[2].trim();
+          if (isiFn) {
+            catatanKaki.push(isiFn);
+            var nomor = catatanKaki.length;
+            hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+          }
+        } else if (m[3]) {
+          var clsFont = m[4] === "garamond" ? "teks-garamond" : "teks-sans";
+          hasil += '<span class="' + clsFont + '">' + prosesFormatTeks(m[5]) + "</span>";
+        } else if (m[6]) {
+          hasil += '<span style="font-size:' + esc(m[7]) + 'px;line-height:1.45">' + prosesFormatTeks(m[8]) + "</span>";
+        } else if (m[9]) {
+          hasil += "<strong>" + prosesFormatTeks(m[10]) + "</strong>";
+        } else if (m[11]) {
+          hasil += "<em>" + prosesFormatTeks(m[12]) + "</em>";
         }
         lastIdx = re.lastIndex;
       }
-      hasil += esc(teks.slice(lastIdx));
+      hasil += esc(str.slice(lastIdx));
       return hasil;
     }
 
     var blokHtml = daftarParagraf.map(function (p) {
+      if (p.trim() === "[spasi]") {
+        return '<div class="baca-jeda-bait" aria-hidden="true"></div>';
+      }
+
       var mFoto = p.match(/^\[foto:\s*([^|\]]+?)(?:\s*\|\s*(tengah|penuh))?(?:\s*\|\s*([^\]]*))?\]$/i);
       if (mFoto) {
         var src = mFoto[1].trim();
@@ -163,17 +182,60 @@
         var caption = (mFoto[3] || "").trim();
         return '<figure class="baca-foto baca-foto--' + tata + '">' +
                '<img src="' + esc(src) + '" alt="' + esc(caption || "Ilustrasi tulisan") + '" loading="lazy">' +
-               (caption ? "<figcaption>" + prosesInline(caption) + "</figcaption>" : "") +
+               (caption ? "<figcaption>" + prosesFormatTeks(caption) + "</figcaption>" : "") +
                "</figure>";
       }
-      return "<p>" + prosesInline(p) + "</p>";
+
+      var meta = {};
+      var isiBlok = p;
+      var mGaya = p.match(/^\[gaya:\s*([^\]]+)\]\n([\s\S]*)$/);
+      if (mGaya) {
+        mGaya[1].split(";").forEach(function (bag) {
+          var kv = bag.split(":");
+          if (kv.length === 2) meta[kv[0].trim()] = kv[1].trim();
+        });
+        isiBlok = mGaya[2];
+      }
+
+      var kelasList = [];
+      var styleList = [];
+      if (meta.align === "tengah") kelasList.push("rata-tengah");
+      else if (meta.align === "kanan") kelasList.push("rata-kanan");
+      else if (meta.align === "justify") kelasList.push("rata-justify");
+
+      if (meta.font === "garamond") kelasList.push("teks-garamond");
+      else if (meta.font === "sans") kelasList.push("teks-sans");
+
+      if (meta.size && /^\d{2}$/.test(meta.size)) {
+        styleList.push("font-size:" + meta.size + "px");
+      }
+
+      var attrClass = kelasList.length ? ' class="' + kelasList.join(" ") + '"' : "";
+      var attrStyle = styleList.length ? ' style="' + styleList.join(";") + '"' : "";
+
+      var barisArr = isiBlok.split("\n");
+      var semuaOl = barisArr.length > 0 && barisArr.every(function (b) { return /^\s*\d+\.\s+/.test(b); });
+      var semuaUl = barisArr.length > 0 && barisArr.every(function (b) { return /^\s*-\s+/.test(b); });
+
+      if (semuaOl) {
+        return "<ol" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
+          return "<li>" + prosesFormatTeks(b.replace(/^\s*\d+\.\s+/, "")) + "</li>";
+        }).join("") + "</ol>";
+      }
+      if (semuaUl) {
+        return "<ul" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
+          return "<li>" + prosesFormatTeks(b.replace(/^\s*-\s+/, "")) + "</li>";
+        }).join("") + "</ul>";
+      }
+
+      return "<p" + attrClass + attrStyle + ">" + prosesFormatTeks(isiBlok) + "</p>";
     }).join("");
 
     if (catatanKaki.length) {
       blokHtml += '<section class="baca-footnote" aria-label="Catatan kaki"><ol>' +
         catatanKaki.map(function (fn, idx) {
           var n = idx + 1;
-          return '<li id="fn-' + n + '">' + esc(fn) + ' <a href="#ref-' + n + '" class="fn-balik" aria-label="Kembali ke teks">&#8617;</a></li>';
+          return '<li id="fn-' + n + '">' + prosesFormatTeks(fn) + ' <a href="#ref-' + n + '" class="fn-balik" aria-label="Kembali ke teks">&#8617;</a></li>';
         }).join("") +
         "</ol></section>";
     }
@@ -266,7 +328,6 @@
       if (halaman === "baca") {
         location.href = root + "index.html?q=" + encodeURIComponent(input.value.trim());
       } else if (header && header.classList.contains("is-open")) {
-        // Tutup menu mobile setelah menekan Enter saat mencari
         header.classList.remove("is-open");
         if (hamburger) {
           hamburger.setAttribute("aria-expanded", "false");

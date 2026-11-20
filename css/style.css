@@ -157,14 +157,14 @@ a {
   width: 1px;
   height: 1.1em;
   border-left: 1px solid var(--ink);
-  margin: 0 22px;
+  margin: 0 18px;
 }
 .nav .sep:first-child {
-  margin-left: 0; /* 24px dari gap header + 0px = 24px, hampir identik dengan 22px */
+  margin-left: 0;
 }
 .nav .grup {
   display: flex;
-  gap: 20px;
+  gap: 18px;
 }
 .nav .grup a {
   text-decoration: underline;
@@ -183,17 +183,17 @@ a {
 .search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: min(250px, 100%);
-  height: 50px;
-  padding: 0 12px;
+  gap: 8px;
+  width: min(220px, 100%);
+  height: 42px;
+  padding: 0 10px;
   border: 1px solid var(--grey);
   background: rgba(255, 255, 255, 0.5);
 }
 .search svg {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 20px;
   stroke: var(--grey);
   fill: none;
   stroke-width: 2;
@@ -206,7 +206,7 @@ a {
   background: transparent;
   font-family: var(--serif);
   font-style: italic;
-  font-size: 34px;
+  font-size: 20px;
   color: var(--ink);
 }
 .search input::placeholder {
@@ -220,8 +220,8 @@ a {
 .search input::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   cursor: pointer;
   background-color: var(--grey);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Cline x1='5' y1='5' x2='19' y2='19'/%3E%3Cline x1='19' y1='5' x2='5' y2='19'/%3E%3C/svg%3E")
@@ -257,9 +257,9 @@ main {
 }
 .baca-tanggal {
   font-family: var(--serif);
-  font-size: 25px;
+  font-size: 22px;
   color: #555;
-  margin: 5px 0 32px;
+  margin: 8px 0 32px;
   letter-spacing: 0.01em;
 }
 .baca-tanggal em {
@@ -280,16 +280,53 @@ main {
   margin-bottom: -6px;
 }
 
-/* ===== Halaman baca ===== */
+/* ===== Halaman baca & pemformatan kaya (puisi, font, rata, list) ===== */
 .baca-isi {
-  margin-top: 40px;
+  margin-top: 36px;
   font-family: var(--sans);
   font-size: 17px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 .baca-isi p {
   margin: 0 0 24px;
-  white-space: pre-line;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+.baca-isi ol,
+.baca-isi ul {
+  margin: 0 0 24px;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.baca-isi li {
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+.baca-jeda-bait {
+  height: 28px;
+}
+
+/* Pilihan jenis font */
+.teks-garamond {
+  font-family: var(--serif);
+  font-size: 1.15em;
+  line-height: 1.55;
+}
+.teks-sans {
+  font-family: var(--sans);
+}
+
+/* Perataan teks */
+.rata-tengah {
+  text-align: center;
+}
+.rata-kanan {
+  text-align: right;
+}
+.rata-justify {
+  text-align: justify;
 }
 
 /* ===== Foto Riset di Halaman Baca ===== */
@@ -611,16 +648,14 @@ main {
     content: "";
     position: fixed;
     inset: 0;
-    z-index: -1; /* Berada di belakang semua teks & header */
+    z-index: -1;
     pointer-events: none;
 
-    /* Pola garis grid tipis warna hijau khas tema (#2c4a2a) */
     background-image:
       linear-gradient(to right, rgba(44, 74, 42, 0.14) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(44, 74, 42, 0.14) 1px, transparent 1px);
     background-size: 36px 36px;
 
-    /* Efek blur halus & tepian membulat mengikuti posisi kursor */
     filter: blur(0.6px);
     -webkit-mask-image: radial-gradient(
       circle 220px at var(--mx, -500px) var(--my, -500px),

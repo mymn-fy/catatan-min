@@ -7,6 +7,7 @@
   <title>Admin | Catatan Min</title>
   <link rel="preload" href="assets/fonts/GLCGaramond-Normal.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="assets/fonts/GLCGaramond-Italic.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="assets/fonts/GLCGaramond-Bold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="css/style.css">
   <style>
     .adm { max-width: 760px; margin: 48px auto 0; font-family: var(--sans); font-size: 15px; }
@@ -16,10 +17,16 @@
     .adm input, .adm select, .adm textarea {
       width: 100%; padding: 10px; font: inherit; border: 1px solid var(--ink); background: #fff; border-radius: 0;
     }
-    .adm textarea { min-height: 240px; line-height: 1.5; }
+    .adm textarea {
+      min-height: 260px;
+      line-height: 1.5;
+      tab-size: 4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+    }
     .adm button { font: inherit; padding: 10px 18px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; margin: 16px 8px 0 0; }
     .adm button.sekunder { background: #fff; color: var(--ink); }
-    .adm button.kecil { padding: 5px 10px; margin: 0; font-size: 13px; }
+    .adm button.kecil { padding: 5px 9px; margin: 0; font-size: 13px; line-height: 1.2; }
     .adm button:disabled { opacity: 0.5; cursor: default; }
     .adm .atas { display: flex; justify-content: space-between; align-items: center; }
     .adm .tab { margin: 0 0 8px; }
@@ -36,8 +43,15 @@
 
     /* Toolbar editor isi */
     .adm .toolbar {
-      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
       padding: 8px; border: 1px solid var(--ink); border-bottom: 0; background: #f8f8f8;
+    }
+    .adm .tb-sep {
+      display: inline-block; width: 1px; height: 20px; background: #ccc; margin: 0 3px;
+    }
+    .adm .tb-select {
+      width: auto; padding: 4px 6px; font-size: 13px; height: 28px;
+      border: 1px solid var(--ink); background: #fff; cursor: pointer;
     }
     .adm .toolbar-status { font-size: 12px; color: var(--green); margin-left: auto; }
 
@@ -53,12 +67,29 @@
 
     /* Pratinjau tulisan */
     .adm .pratinjau-box {
-      margin-top: 24px; padding: 24px; border: 1px solid var(--ink); background: #fff;
+      margin-top: 24px; padding: 28px; border: 1px solid var(--ink); background: #fff;
     }
     .adm .pratinjau-head {
       display: flex; justify-content: space-between; align-items: center;
       border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 18px;
-      font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #666;
+      font-family: var(--sans); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #666;
+    }
+    /* Pastikan tipografi Garamond aktif persis seperti di halaman baca */
+    .adm .pratinjau-konten {
+      font-family: var(--serif);
+      color: var(--ink);
+    }
+    .adm .pratinjau-konten .label {
+      font-family: var(--serif);
+      font-style: italic;
+      color: var(--green);
+    }
+    .adm .pratinjau-konten .judul-garis {
+      font-family: var(--serif);
+      font-weight: 400;
+    }
+    .adm .pratinjau-konten .baca-tanggal {
+      font-family: var(--serif);
     }
 
     /* Filter daftar tulisan */
@@ -123,7 +154,54 @@
 
           <label for="t-isi">Isi</label>
           <div class="toolbar">
-            <button type="button" id="btn-sisip-foto" class="sekunder kecil">+ Sisipkan Foto</button>
+            <!-- 1. Normal, Italic, Bold -->
+            <button type="button" id="btn-normal" class="sekunder kecil" title="Hapus format tebal/miring pada teks terpilih">Normal</button>
+            <button type="button" id="btn-bold" class="sekunder kecil" title="Tebal (**teks**)"><strong>B</strong></button>
+            <button type="button" id="btn-italic" class="sekunder kecil" title="Miring (*teks*)"><em>I</em></button>
+
+            <span class="tb-sep" aria-hidden="true"></span>
+
+            <!-- 2. Pilihan Font: Default / Garamond -->
+            <select id="sel-font" class="tb-select" title="Jenis font untuk paragraf/teks terpilih" aria-label="Jenis font">
+              <option value="">Font: Default</option>
+              <option value="garamond">Font: Garamond</option>
+              <option value="sans">Font: Sans</option>
+            </select>
+
+            <!-- 3. Ukuran Font -->
+            <select id="sel-ukuran" class="tb-select" title="Ukuran font untuk paragraf/teks terpilih" aria-label="Ukuran font">
+              <option value="">Ukuran: Default</option>
+              <option value="14">14 px (Kecil)</option>
+              <option value="17">17 px (Normal)</option>
+              <option value="20">20 px (Sedang)</option>
+              <option value="24">24 px (Besar)</option>
+              <option value="30">30 px (Subjudul)</option>
+            </select>
+
+            <span class="tb-sep" aria-hidden="true"></span>
+
+            <!-- 4. Perataan Teks: Kiri, Tengah, Kanan, Justify -->
+            <button type="button" class="sekunder kecil" data-align="kiri" title="Rata kiri">Kiri</button>
+            <button type="button" class="sekunder kecil" data-align="tengah" title="Rata tengah">Tengah</button>
+            <button type="button" class="sekunder kecil" data-align="kanan" title="Rata kanan">Kanan</button>
+            <button type="button" class="sekunder kecil" data-align="justify" title="Rata kanan-kiri (Justify)">Justify</button>
+
+            <span class="tb-sep" aria-hidden="true"></span>
+
+            <!-- 5. Daftar Poin / Nomor -->
+            <button type="button" id="btn-ol" class="sekunder kecil" title="Daftar bernomor (1. 2. 3.)">1. 2. 3.</button>
+            <button type="button" id="btn-ul" class="sekunder kecil" title="Daftar poin (- )">&#8226; Poin</button>
+
+            <span class="tb-sep" aria-hidden="true"></span>
+
+            <!-- 6. Spasi Tipografi Puisi -->
+            <button type="button" id="btn-spasi" class="sekunder kecil" title="Sisipkan 4 spasi utuh untuk menjorokkan baris puisi">+ Spasi Puisi</button>
+            <button type="button" id="btn-bait" class="sekunder kecil" title="Sisipkan jarak jeda antar-bait puisi">+ Jeda Bait</button>
+
+            <span class="tb-sep" aria-hidden="true"></span>
+
+            <!-- Foto, Footnote, Pratinjau -->
+            <button type="button" id="btn-sisip-foto" class="sekunder kecil">+ Foto</button>
             <button type="button" id="btn-sisip-fn" class="sekunder kecil">+ Footnote</button>
             <button type="button" id="btn-pratinjau" class="sekunder kecil">Pratinjau</button>
             <span id="status-toolbar" class="toolbar-status"></span>
@@ -163,7 +241,9 @@
           </div>
 
           <textarea id="t-isi" required></textarea>
-          <p class="petunjuk">Baris kosong = paragraf baru. Gunakan tombol di atas untuk menyisipkan foto riset (rata tengah / penuh) atau footnote.</p>
+          <p class="petunjuk">
+            Baris kosong = paragraf/bait baru. Sorot teks lalu klik tombol toolbar untuk format <strong>B</strong>, <em>I</em>, font Garamond, ukuran, perataan, daftar poin, atau spasi puisi (tombol <code>Tab</code> di keyboard juga otomatis menyisipkan 4 spasi).
+          </p>
 
           <button id="t-simpan" type="submit">Simpan</button>
           <button id="t-batal" class="sekunder" type="button" hidden>Batal edit</button>
@@ -176,7 +256,7 @@
             <span>Pratinjau Tampilan Pembaca</span>
             <button type="button" id="btn-tutup-pratinjau" class="sekunder kecil">Tutup</button>
           </div>
-          <div id="isi-pratinjau"></div>
+          <div id="isi-pratinjau" class="pratinjau-konten"></div>
         </div>
 
         <h2>Daftar tulisan</h2>
@@ -220,11 +300,14 @@
     var $ = function (id) { return document.getElementById(id); };
     var LABEL = { prosa: "Prosa", puisi: "Puisi", lain: "Riset" };
     var BUCKET = "foto";
+    var BULAN = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
     var editT = null;
     var editP = null;
     var dataT = [], dataP = [];
     var adaPerubahan = false;
-    $("t-tanggal").value = hariIniIso();
 
     function esc(s) {
       return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -236,11 +319,6 @@
               .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     }
     function info(el, teks, galat) { el.textContent = teks; el.className = "info" + (galat ? " galat" : ""); }
-
-    var BULAN = [
-      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-    ];
 
     function formatTanggalHtml(tglStr) {
       if (!tglStr) return "";
@@ -258,6 +336,8 @@
       var t = String(d.getDate()).padStart(2, "0");
       return d.getFullYear() + "-" + m + "-" + t;
     }
+
+    $("t-tanggal").value = hariIniIso();
 
     /* ---------- Peringatan sebelum keluar jika form belum disimpan ---------- */
     $("f-tulisan").addEventListener("input", function () { adaPerubahan = true; });
@@ -306,7 +386,7 @@
       });
     }
 
-    /* ---------- Sisip teks di posisi kursor textarea ---------- */
+    /* ---------- Helper Manipulasi Textarea (Toolbar Pemformatan) ---------- */
     function sisipDiKursor(textarea, teks, blokBaru) {
       var start = textarea.selectionStart != null ? textarea.selectionStart : textarea.value.length;
       var end = textarea.selectionEnd != null ? textarea.selectionEnd : textarea.value.length;
@@ -326,30 +406,223 @@
       adaPerubahan = true;
     }
 
+    function bungkusSeleksi(textarea, buka, tutup, placeholder) {
+      var start = textarea.selectionStart;
+      var end = textarea.selectionEnd;
+      var val = textarea.value;
+      var terpilih = val.slice(start, end);
+
+      if (!terpilih) {
+        var sisip = buka + placeholder + tutup;
+        textarea.value = val.slice(0, start) + sisip + val.slice(end);
+        textarea.focus();
+        textarea.setSelectionRange(start + buka.length, start + buka.length + placeholder.length);
+      } else {
+        // Toggle jika sudah terbungkus tag yang sama
+        if (terpilih.startsWith(buka) && terpilih.endsWith(tutup) && terpilih.length >= buka.length + tutup.length) {
+          var bersih = terpilih.slice(buka.length, terpilih.length - tutup.length);
+          textarea.value = val.slice(0, start) + bersih + val.slice(end);
+          textarea.focus();
+          textarea.setSelectionRange(start, start + bersih.length);
+        } else {
+          textarea.value = val.slice(0, start) + buka + terpilih + tutup + val.slice(end);
+          textarea.focus();
+          textarea.setSelectionRange(start, start + buka.length + terpilih.length + tutup.length);
+        }
+      }
+      adaPerubahan = true;
+    }
+
+    // Terapkan properti blok (align / font / size) ke paragraf yang dipilih atau terbungkus seleksi
+    function terapkanAtributBlok(textarea, kunci, nilai) {
+      var val = textarea.value;
+      var start = textarea.selectionStart;
+      var end = textarea.selectionEnd;
+
+      // Cari batas paragraf berdasarkan pemisah baris kosong yang mencakup seleksi
+      var awalBlok = val.lastIndexOf("\n\n", start > 0 ? start - 1 : 0);
+      awalBlok = awalBlok === -1 ? 0 : awalBlok + 2;
+      var akhirBlok = val.indexOf("\n\n", end);
+      akhirBlok = akhirBlok === -1 ? val.length : akhirBlok;
+
+      var teksBlok = val.slice(awalBlok, akhirBlok);
+      var meta = {};
+      var isiMurni = teksBlok;
+
+      // Cek apakah sudah memiliki header [gaya: ...] di baris pertama blok
+      var mGaya = teksBlok.match(/^\[gaya:\s*([^\]]+)\]\n([\s\S]*)$/);
+      if (mGaya) {
+        mGaya[1].split(";").forEach(function (bag) {
+          var kv = bag.split(":");
+          if (kv.length === 2) meta[kv[0].trim()] = kv[1].trim();
+        });
+        isiMurni = mGaya[2];
+      }
+
+      if (nilai) meta[kunci] = nilai;
+      else delete meta[kunci];
+
+      var pasangan = Object.keys(meta).map(function (k) { return k + "=" + meta[k]; });
+      // Normalisasi format kunci=nilai
+      pasangan = [];
+      Object.keys(meta).forEach(function (k) {
+        if (meta[k]) pasangan.push(k + ":" + meta[k]);
+      });
+
+      var blokBaru = pasangan.length ? "[gaya: " + pasangan.join("; ") + "]\n" + isiMurni : isiMurni;
+      textarea.value = val.slice(0, awalBlok) + blokBaru + val.slice(akhirBlok);
+      textarea.focus();
+      textarea.setSelectionRange(awalBlok, awalBlok + blokBaru.length);
+      adaPerubahan = true;
+    }
+
+    // 1. Normal, Bold, Italic
+    $("btn-bold").addEventListener("click", function () {
+      bungkusSeleksi($("t-isi"), "**", "**", "teks tebal");
+    });
+    $("btn-italic").addEventListener("click", function () {
+      bungkusSeleksi($("t-isi"), "*", "*", "teks miring");
+    });
+    $("btn-normal").addEventListener("click", function () {
+      var ta = $("t-isi");
+      var start = ta.selectionStart;
+      var end = ta.selectionEnd;
+      if (start === end) {
+        // Jika tidak ada seleksi, reset gaya blok paragraf saat ini ke normal/default
+        var val = ta.value;
+        var awalBlok = val.lastIndexOf("\n\n", start > 0 ? start - 1 : 0);
+        awalBlok = awalBlok === -1 ? 0 : awalBlok + 2;
+        var akhirBlok = val.indexOf("\n\n", end);
+        akhirBlok = akhirBlok === -1 ? val.length : akhirBlok;
+        var teksBlok = val.slice(awalBlok, akhirBlok).replace(/^\[gaya:\s*[^\]]+\]\n/, "");
+        ta.value = val.slice(0, awalBlok) + teksBlok + val.slice(akhirBlok);
+        ta.focus();
+        ta.setSelectionRange(awalBlok, awalBlok + teksBlok.length);
+      } else {
+        var bersih = ta.value.slice(start, end)
+          .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
+          .replace(/\*([\s\S]+?)\*/g, "$1")
+          .replace(/\[font:[^\]]+\]([\s\S]*?)\[\/font\]/g, "$1")
+          .replace(/\[size:[^\]]+\]([\s\S]*?)\[\/size\]/g, "$1");
+        ta.value = ta.value.slice(0, start) + bersih + ta.value.slice(end);
+        ta.focus();
+        ta.setSelectionRange(start, start + bersih.length);
+      }
+      adaPerubahan = true;
+    });
+
+    // 2. Pilihan Font (Default / Garamond / Sans)
+    $("sel-font").addEventListener("change", function () {
+      var ta = $("t-isi");
+      var v = this.value;
+      if (ta.selectionStart !== ta.selectionEnd && v) {
+        bungkusSeleksi(ta, "[font:" + v + "]", "[/font]", "teks");
+      } else {
+        terapkanAtributBlok(ta, "font", v);
+      }
+      this.value = "";
+    });
+
+    // 3. Ukuran Font
+    $("sel-ukuran").addEventListener("change", function () {
+      var ta = $("t-isi");
+      var v = this.value;
+      if (ta.selectionStart !== ta.selectionEnd && v) {
+        bungkusSeleksi(ta, "[size:" + v + "]", "[/size]", "teks");
+      } else {
+        terapkanAtributBlok(ta, "size", v);
+      }
+      this.value = "";
+    });
+
+    // 4. Perataan Teks (Kiri, Tengah, Kanan, Justify)
+    document.querySelectorAll("button[data-align]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var align = this.dataset.align;
+        terapkanAtributBlok($("t-isi"), "align", align === "kiri" ? "" : align);
+      });
+    });
+
+    // 5. Poin 1 2 3 & Bullet
+    function formatDaftar(ordered) {
+      var ta = $("t-isi");
+      var val = ta.value;
+      var start = ta.selectionStart;
+      var end = ta.selectionEnd;
+      var awalBaris = val.lastIndexOf("\n", start > 0 ? start - 1 : 0);
+      awalBaris = awalBaris === -1 ? 0 : awalBaris + 1;
+      var akhirBaris = val.indexOf("\n", end);
+      akhirBaris = akhirBaris === -1 ? val.length : akhirBaris;
+
+      var potongan = val.slice(awalBaris, akhirBaris);
+      var barisArr = potongan.split("\n");
+      var hasil = barisArr.map(function (b, idx) {
+        var bersih = b.replace(/^\s*(?:\d+\.\s+|-\s+|\*\s+)/, "");
+        return (ordered ? (idx + 1) + ". " : "- ") + (bersih || "Item " + (idx + 1));
+      }).join("\n");
+
+      ta.value = val.slice(0, awalBaris) + hasil + val.slice(akhirBaris);
+      ta.focus();
+      ta.setSelectionRange(awalBaris, awalBaris + hasil.length);
+      adaPerubahan = true;
+    }
+    $("btn-ol").addEventListener("click", function () { formatDaftar(true); });
+    $("btn-ul").addEventListener("click", function () { formatDaftar(false); });
+
+    // 6. Spasi Puisi & Jeda Bait + Dukungan Tombol Tab di Textarea
+    $("btn-spasi").addEventListener("click", function () {
+      sisipDiKursor($("t-isi"), "    ", false);
+    });
+    $("btn-bait").addEventListener("click", function () {
+      sisipDiKursor($("t-isi"), "[spasi]", true);
+    });
+    $("t-isi").addEventListener("keydown", function (e) {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        sisipDiKursor(this, "    ", false);
+      }
+    });
+
     /* ---------- Render konten (sama persis dengan halaman baca) ---------- */
     function renderKontenHtml(daftarParagraf) {
       var catatanKaki = [];
 
-      function prosesInline(teks) {
+      function prosesFormatTeks(str) {
+        // Parse inline tags: [fn: ...], [font:...], [size:...], **bold**, *italic*
         var hasil = "";
+        var re = /(\[fn:\s*([\s\S]*?)\])|(\[font:(garamond|sans)\]([\s\S]*?)\[\/font\])|(\[size:(\d{2})\]([\s\S]*?)\[\/size\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
         var lastIdx = 0;
-        var re = /\[fn:\s*([\s\S]*?)\]/g;
         var m;
-        while ((m = re.exec(teks)) !== null) {
-          hasil += esc(teks.slice(lastIdx, m.index));
-          var isiFn = m[1].trim();
-          if (isiFn) {
-            catatanKaki.push(isiFn);
-            var nomor = catatanKaki.length;
-            hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+        while ((m = re.exec(str)) !== null) {
+          hasil += esc(str.slice(lastIdx, m.index));
+          if (m[1]) {
+            var isiFn = m[2].trim();
+            if (isiFn) {
+              catatanKaki.push(isiFn);
+              var nomor = catatanKaki.length;
+              hasil += '<sup class="fn-ref"><a href="#fn-' + nomor + '" id="ref-' + nomor + '">[' + nomor + ']</a></sup>';
+            }
+          } else if (m[3]) {
+            var clsFont = m[4] === "garamond" ? "teks-garamond" : "teks-sans";
+            hasil += '<span class="' + clsFont + '">' + prosesFormatTeks(m[5]) + "</span>";
+          } else if (m[6]) {
+            hasil += '<span style="font-size:' + esc(m[7]) + 'px;line-height:1.45">' + prosesFormatTeks(m[8]) + "</span>";
+          } else if (m[9]) {
+            hasil += "<strong>" + prosesFormatTeks(m[10]) + "</strong>";
+          } else if (m[11]) {
+            hasil += "<em>" + prosesFormatTeks(m[12]) + "</em>";
           }
           lastIdx = re.lastIndex;
         }
-        hasil += esc(teks.slice(lastIdx));
+        hasil += esc(str.slice(lastIdx));
         return hasil;
       }
 
       var blokHtml = daftarParagraf.map(function (p) {
+        if (p.trim() === "[spasi]") {
+          return '<div class="baca-jeda-bait" aria-hidden="true"></div>';
+        }
+
         var mFoto = p.match(/^\[foto:\s*([^|\]]+?)(?:\s*\|\s*(tengah|penuh))?(?:\s*\|\s*([^\]]*))?\]$/i);
         if (mFoto) {
           var src = mFoto[1].trim();
@@ -357,17 +630,62 @@
           var caption = (mFoto[3] || "").trim();
           return '<figure class="baca-foto baca-foto--' + tata + '">' +
                  '<img src="' + esc(src) + '" alt="' + esc(caption || "Ilustrasi tulisan") + '" loading="lazy">' +
-                 (caption ? "<figcaption>" + prosesInline(caption) + "</figcaption>" : "") +
+                 (caption ? "<figcaption>" + prosesFormatTeks(caption) + "</figcaption>" : "") +
                  "</figure>";
         }
-        return "<p>" + prosesInline(p) + "</p>";
+
+        // Cek atribut gaya blok [gaya: align:center; font:garamond; size:20]
+        var meta = {};
+        var isiBlok = p;
+        var mGaya = p.match(/^\[gaya:\s*([^\]]+)\]\n([\s\S]*)$/);
+        if (mGaya) {
+          mGaya[1].split(";").forEach(function (bag) {
+            var kv = bag.split(":");
+            if (kv.length === 2) meta[kv[0].trim()] = kv[1].trim();
+          });
+          isiBlok = mGaya[2];
+        }
+
+        var kelasList = [];
+        var styleList = [];
+        if (meta.align === "tengah") kelasList.push("rata-tengah");
+        else if (meta.align === "kanan") kelasList.push("rata-kanan");
+        else if (meta.align === "justify") kelasList.push("rata-justify");
+
+        if (meta.font === "garamond") kelasList.push("teks-garamond");
+        else if (meta.font === "sans") kelasList.push("teks-sans");
+
+        if (meta.size && /^\d{2}$/.test(meta.size)) {
+          styleList.push("font-size:" + meta.size + "px");
+        }
+
+        var attrClass = kelasList.length ? ' class="' + kelasList.join(" ") + '"' : "";
+        var attrStyle = styleList.length ? ' style="' + styleList.join(";") + '"' : "";
+
+        // Cek apakah seluruh baris di blok ini adalah daftar bernomor (1. ...) atau poin (- ...)
+        var barisArr = isiBlok.split("\n");
+        var semuaOl = barisArr.length > 0 && barisArr.every(function (b) { return /^\s*\d+\.\s+/.test(b); });
+        var semuaUl = barisArr.length > 0 && barisArr.every(function (b) { return /^\s*-\s+/.test(b); });
+
+        if (semuaOl) {
+          return "<ol" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
+            return "<li>" + prosesFormatTeks(b.replace(/^\s*\d+\.\s+/, "")) + "</li>";
+          }).join("") + "</ol>";
+        }
+        if (semuaUl) {
+          return "<ul" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
+            return "<li>" + prosesFormatTeks(b.replace(/^\s*-\s+/, "")) + "</li>";
+          }).join("") + "</ul>";
+        }
+
+        return "<p" + attrClass + attrStyle + ">" + prosesFormatTeks(isiBlok) + "</p>";
       }).join("");
 
       if (catatanKaki.length) {
         blokHtml += '<section class="baca-footnote" aria-label="Catatan kaki"><ol>' +
           catatanKaki.map(function (fn, idx) {
             var n = idx + 1;
-            return '<li id="fn-' + n + '">' + esc(fn) + ' <a href="#ref-' + n + '" class="fn-balik" aria-label="Kembali ke teks">&#8617;</a></li>';
+            return '<li id="fn-' + n + '">' + prosesFormatTeks(fn) + ' <a href="#ref-' + n + '" class="fn-balik" aria-label="Kembali ke teks">&#8617;</a></li>';
           }).join("") +
           "</ol></section>";
       }
@@ -451,7 +769,7 @@
       var label = $("t-label").value.trim() || "Prosa";
       var penulis = $("t-penulis").value.trim() || "Penulis";
       var tanggalHtml = formatTanggalHtml($("t-tanggal").value);
-      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.replace(/^\n+|\n+$/g, ""); }).filter(function (s) { return s.trim().length > 0; });
 
       $("isi-pratinjau").innerHTML =
         '<span class="label">' + esc(label) + ": " + esc(penulis) + '</span><br>' +
@@ -551,7 +869,12 @@
     $("f-tulisan").addEventListener("submit", async function (e) {
       e.preventDefault();
       var judul = $("t-judul").value.trim();
-      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+      // Pertahankan spasi awal baris puisi (jangan di-trim di sisi kiri baris)
+      var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) {
+        return s.replace(/^\n+|\n+$/g, "");
+      }).filter(function (s) {
+        return s.trim().length > 0;
+      });
       if (!judul || !isi.length) { info($("i-t"), "Judul dan isi wajib diisi.", true); return; }
 
       var baris = {
