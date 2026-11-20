@@ -36,6 +36,7 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
 }
 body {
   margin: 0;
@@ -61,8 +62,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
+  gap: 20px;
+  flex-wrap: nowrap;
   margin: 0 calc(var(--gutter) * -1);
   padding: 10px var(--gutter);
   border-bottom: 1px solid var(--ink);
@@ -109,8 +110,12 @@ a {
 }
 
 .brand {
-  font-size: clamp(30px, 3.47vw, 54px);
+  font-size: clamp(24px, 2.6vw, 42px);
   line-height: 1.1;
+  white-space: nowrap;
+}
+.brand em {
+  font-style: italic;
 }
 
 .hamburger {
@@ -141,10 +146,11 @@ a {
 .nav {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  font-size: clamp(30px, 3.47vw, 54px);
+  flex-wrap: nowrap;
+  font-size: clamp(24px, 2.6vw, 42px);
   line-height: 1.1;
   margin-right: auto;
+  white-space: nowrap;
 }
 .nav .sep {
   display: inline-block;
@@ -178,8 +184,8 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: min(280px, 100%);
-  height: 60px;
+  width: min(250px, 100%);
+  height: 50px;
   padding: 0 12px;
   border: 1px solid var(--grey);
   background: rgba(255, 255, 255, 0.5);
@@ -248,6 +254,16 @@ main {
   line-height: 1;
   font-weight: 400;
   border-bottom: 2px solid var(--ink);
+}
+.baca-tanggal {
+  font-family: var(--serif);
+  font-size: 25px;
+  color: #555;
+  margin: 5px 0 32px;
+  letter-spacing: 0.01em;
+}
+.baca-tanggal em {
+  font-style: italic;
 }
 
 /* ===== Daftar (beranda) ===== */

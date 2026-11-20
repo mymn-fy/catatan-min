@@ -118,6 +118,9 @@
           <input id="t-penulis" list="daftar-penulis" required>
           <datalist id="daftar-penulis"></datalist>
 
+          <label for="t-tanggal">Tanggal tulisan</label>
+          <input id="t-tanggal" type="date" required>
+
           <label for="t-isi">Isi</label>
           <div class="toolbar">
             <button type="button" id="btn-sisip-foto" class="sekunder kecil">+ Sisipkan Foto</button>
@@ -221,6 +224,7 @@
     var editP = null;
     var dataT = [], dataP = [];
     var adaPerubahan = false;
+    $("t-tanggal").value = hariIniIso();
 
     function esc(s) {
       return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -232,6 +236,28 @@
               .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     }
     function info(el, teks, galat) { el.textContent = teks; el.className = "info" + (galat ? " galat" : ""); }
+
+    var BULAN = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    function formatTanggalHtml(tglStr) {
+      if (!tglStr) return "";
+      var p = String(tglStr).split("-");
+      if (p.length !== 3) return esc(tglStr);
+      var hari = parseInt(p[2], 10);
+      var bulan = BULAN[parseInt(p[1], 10) - 1] || "";
+      var tahun = p[0];
+      return hari + " <em>" + bulan + "</em> " + tahun;
+    }
+
+    function hariIniIso() {
+      var d = new Date();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      var t = String(d.getDate()).padStart(2, "0");
+      return d.getFullYear() + "-" + m + "-" + t;
+    }
 
     /* ---------- Peringatan sebelum keluar jika form belum disimpan ---------- */
     $("f-tulisan").addEventListener("input", function () { adaPerubahan = true; });
@@ -424,11 +450,13 @@
       var judul = $("t-judul").value.trim() || "(Tanpa Judul)";
       var label = $("t-label").value.trim() || "Prosa";
       var penulis = $("t-penulis").value.trim() || "Penulis";
+      var tanggalHtml = formatTanggalHtml($("t-tanggal").value);
       var isi = $("t-isi").value.split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean);
 
       $("isi-pratinjau").innerHTML =
         '<span class="label">' + esc(label) + ": " + esc(penulis) + '</span><br>' +
         '<h1 class="judul-garis">' + esc(judul) + '</h1>' +
+        (tanggalHtml ? '<p class="baca-tanggal">' + tanggalHtml + '</p>' : '') +
         '<div class="baca-isi">' + renderKontenHtml(isi) + '</div>';
       $("box-pratinjau").hidden = false;
       $("box-pratinjau").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -511,6 +539,7 @@
       adaPerubahan = false;
       $("f-tulisan").reset();
       $("t-label").value = "Prosa";
+      $("t-tanggal").value = hariIniIso();
       $("jdl-t").textContent = "Tulisan baru";
       $("t-batal").hidden = true;
       $("box-foto").hidden = true;
@@ -529,6 +558,7 @@
         jenis: $("t-jenis").value,
         label: $("t-label").value.trim(),
         penulis: $("t-penulis").value.trim(),
+        tanggal: $("t-tanggal").value || hariIniIso(),
         judul: judul,
         isi: isi
       };
@@ -562,6 +592,7 @@
         $("t-jenis").value = t.jenis;
         $("t-label").value = t.label;
         $("t-penulis").value = t.penulis;
+        $("t-tanggal").value = t.tanggal || hariIniIso();
         $("t-isi").value = t.isi.join("\n\n");
         $("jdl-t").textContent = "Edit tulisan";
         $("t-batal").hidden = false;

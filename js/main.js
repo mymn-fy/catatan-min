@@ -99,6 +99,19 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
+  var BULAN = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  function formatTanggalHtml(tglStr) {
+    if (!tglStr) return "";
+    var p = String(tglStr).split("-");
+    if (p.length !== 3) return esc(tglStr);
+    var hari = parseInt(p[2], 10);
+    var bulan = BULAN[parseInt(p[1], 10) - 1] || "";
+    var tahun = p[0];
+    return hari + " <em>" + bulan + "</em> " + tahun;
+  }
   function bersihkanTag(teks) {
     return String(teks || "")
       .replace(/\[foto:[^\]]*\]/gi, " ")
@@ -213,8 +226,10 @@
     var t = D.tulisan.filter(function (x) { return x.id === param("id"); })[0];
     if (!t) { wadah.innerHTML = '<p class="kosong">Tulisan tidak ditemukan.</p>'; return; }
     document.title = t.judul + " | Catatan Min";
+    var tanggalHtml = formatTanggalHtml(t.tanggal);
     wadah.innerHTML = '<span class="label">' + esc(t.label) + ": " + esc(t.penulis) + '</span><br>' +
       '<h1 class="judul-garis">' + esc(t.judul) + '</h1>' +
+      (tanggalHtml ? '<p class="baca-tanggal">' + tanggalHtml + '</p>' : '') +
       '<div class="baca-isi">' + renderIsiBaca(t.isi) + "</div>";
   }
 
