@@ -139,6 +139,7 @@
   /* ---------- Render Isi Bacaan (Format Teks, Puisi, Foto Riset & Footnote) ---------- */
   function renderIsiBaca(daftarParagraf) {
     var catatanKaki = [];
+    var fontAktif = [];
 
     function prosesFormatTeks(str) {
       var hasil = "";
@@ -168,6 +169,20 @@
       }
       hasil += esc(str.slice(lastIdx));
       return hasil;
+    }
+
+    function normalisasiTagFont(str) {
+      var pembuka = fontAktif.map(function (font) { return "[font:" + font + "]"; }).join("");
+      var stack = fontAktif.slice();
+      var re = /\[font:(garamond|sans)\]|\[\/font\]/g;
+      var m;
+      while ((m = re.exec(str)) !== null) {
+        if (m[1]) stack.push(m[1]);
+        else if (stack.length) stack.pop();
+      }
+      fontAktif = stack;
+      var penutup = fontAktif.slice().reverse().map(function () { return "[/font]"; }).join("");
+      return pembuka + str + penutup;
     }
 
     var blokHtml = daftarParagraf.map(function (p) {
@@ -219,16 +234,16 @@
 
       if (semuaOl) {
         return "<ol" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
-          return "<li>" + prosesFormatTeks(b.replace(/^\s*\d+\.\s+/, "")) + "</li>";
+          return "<li>" + prosesFormatTeks(normalisasiTagFont(b.replace(/^\s*\d+\.\s+/, ""))) + "</li>";
         }).join("") + "</ol>";
       }
       if (semuaUl) {
         return "<ul" + attrClass + attrStyle + ">" + barisArr.map(function (b) {
-          return "<li>" + prosesFormatTeks(b.replace(/^\s*-\s+/, "")) + "</li>";
+          return "<li>" + prosesFormatTeks(normalisasiTagFont(b.replace(/^\s*-\s+/, ""))) + "</li>";
         }).join("") + "</ul>";
       }
 
-      return "<p" + attrClass + attrStyle + ">" + prosesFormatTeks(isiBlok) + "</p>";
+      return "<p" + attrClass + attrStyle + ">" + prosesFormatTeks(normalisasiTagFont(isiBlok)) + "</p>";
     }).join("");
 
     if (catatanKaki.length) {
