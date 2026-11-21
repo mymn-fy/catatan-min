@@ -508,7 +508,8 @@ main {
 .kartu-penulis h2 {
   display: inline-block;
   padding-bottom: 2px;
-  background: linear-gradient(var(--ink), var(--ink)) no-repeat left bottom / 0 2px;
+  background: linear-gradient(var(--ink), var(--ink)) no-repeat left bottom / 0
+    2px;
   transition: background-size 0.35s cubic-bezier(0.65, 0, 0.35, 1);
 }
 .kartu-penulis:hover h2,
@@ -560,6 +561,24 @@ main {
   margin: 0 0 24px;
   font-size: clamp(24px, 2.4vw, 36px);
   font-weight: 400;
+}
+body[data-page="penulis"] #konten .judul-karya {
+  font-size: clamp(22px, 2vw, 28px);
+  font-weight: 400;
+}
+@media (min-width: 901px) {
+  body[data-page="penulis"] #konten .judul-karya {
+    font-size: clamp(30px, 3.47vw, 54px);
+  }
+}
+body[data-page="penulis"] #konten .daftar {
+  gap: 8px;
+}
+body[data-page="penulis"] #konten .daftar .label {
+  font-size: clamp(14px, 1.3vw, 18px);
+}
+body[data-page="penulis"] #konten .daftar .judul-garis {
+  font-size: clamp(22px, 2.2vw, 32px);
 }
 
 .kosong {
@@ -813,4 +832,23 @@ main {
   body.cursor-active::before {
     opacity: 1;
   }
+}
+
+/* ===== Ukuran subjudul "Karya" di halaman detail Penulis ===== */
+body[data-page="penulis"] #konten h2,
+body[data-page="penulis"] #konten h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(54px, 2vw, 30px); /* Ubah angka ini sesuai selera */
+  margin: 36px 0 14px;
+  color: var(--ink);
+}
+
+/* ===== Ukuran Teks Bio Penulis ===== */
+body[data-page="penulis"] #konten > p,
+body[data-page="penulis"] #konten .bio-penulis {
+  font-family: var(--sans);
+  font-size: 15px; /* Ubah ukuran teks bio */
+  line-height: 1.5;
+  max-width: 680px; /* Batas lebar paragraf bio agar nyaman dibaca */
 }
