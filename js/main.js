@@ -142,7 +142,7 @@
     var tagAktif = [];
 
     function prosesFormatTeks(str) {
-      var token = /(\[fn:\s*([\s\S]*?)\])|(\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\])|(\[\/(font|size|leading)\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
+      var token = /(\[fn:\s*([\s\S]*?)\])|(\[(font:(?:garamond|palatino|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\])|(\[\/(font|size|leading)\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
       var tokens = [];
       var lastIdx = 0;
       var m;
@@ -176,7 +176,8 @@
             if (!inner.closed) {
               html += esc(current.raw) + inner.html;
             } else if (current.value.indexOf("font:") === 0) {
-              var kelas = current.value === "font:garamond" ? "teks-garamond" : "teks-sans";
+              var kelas = current.value === "font:garamond" ? "teks-garamond" :
+                current.value === "font:palatino" ? "teks-palatino" : "teks-sans";
               html += '<span class="' + kelas + '">' + inner.html + "</span>";
             } else if (current.value.indexOf("size:") === 0) {
               html += '<span style="font-size:' + esc(current.value.slice(5)) + 'px">' + inner.html + "</span>";
@@ -210,7 +211,7 @@
     function normalisasiTagInline(str) {
       var pembuka = tagAktif.map(function (tag) { return tag.buka; }).join("");
       var stack = tagAktif.slice();
-      var re = /\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\]|\[\/(font|size|leading)\]/g;
+      var re = /\[(font:(?:garamond|palatino|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\]|\[\/(font|size|leading)\]/g;
       var m;
       while ((m = re.exec(str)) !== null) {
         if (m[1]) {
@@ -260,6 +261,7 @@
       else if (meta.align === "justify") kelasList.push("rata-justify");
 
       if (meta.font === "garamond") kelasList.push("teks-garamond");
+      else if (meta.font === "palatino") kelasList.push("teks-palatino");
       else if (meta.font === "sans") kelasList.push("teks-sans");
 
       if (meta.size && /^\d{2}$/.test(meta.size)) {

@@ -206,10 +206,11 @@
 
             <span class="tb-sep" aria-hidden="true"></span>
 
-            <!-- 2. Pilihan Font: Default / Garamond -->
+            <!-- 2. Pilihan Font -->
             <select id="sel-font" class="tb-select" title="Jenis font untuk paragraf/teks terpilih" aria-label="Jenis font">
               <option value="">Font: Default</option>
               <option value="garamond">Font: Garamond</option>
+              <option value="palatino">Font: Palatino Linotype</option>
               <option value="sans">Font: Sans</option>
             </select>
 
@@ -500,9 +501,11 @@
 
     function aturGayaBlok(block, jenis, nilai) {
       if (jenis === "font") {
-        block.classList.remove("teks-garamond", "teks-sans");
+        block.classList.remove("teks-garamond", "teks-palatino", "teks-sans");
         block.style.fontFamily = "";
-        if (nilai) block.classList.add(nilai === "garamond" ? "teks-garamond" : "teks-sans");
+        if (nilai === "garamond") block.classList.add("teks-garamond");
+        else if (nilai === "palatino") block.classList.add("teks-palatino");
+        else if (nilai === "sans") block.classList.add("teks-sans");
         block.dataset.editorFont = nilai || "";
       } else if (jenis === "size") {
         block.style.fontSize = nilai ? nilai + "px" : "";
@@ -565,7 +568,9 @@
     function buatSpanFormat(jenis, nilai) {
       var span = document.createElement("span");
       if (jenis === "font") {
-        span.classList.add(nilai === "garamond" ? "teks-garamond" : "teks-sans");
+        if (nilai === "garamond") span.classList.add("teks-garamond");
+        else if (nilai === "palatino") span.classList.add("teks-palatino");
+        else if (nilai === "sans") span.classList.add("teks-sans");
       } else if (jenis === "size") {
         span.style.fontSize = nilai + "px";
       } else if (jenis === "leading") {
@@ -773,7 +778,7 @@
       var lists = editor.querySelectorAll("p > ol, p > ul, div > ol, div > ul, blockquote > ol, blockquote > ul");
       Array.prototype.forEach.call(lists, function (list) {
         var wrapper = list.parentNode;
-        ["teks-garamond", "teks-sans", "rata-tengah", "rata-kanan", "rata-justify"].forEach(function (className) {
+        ["teks-garamond", "teks-palatino", "teks-sans", "rata-tengah", "rata-kanan", "rata-justify"].forEach(function (className) {
           if (wrapper.classList.contains(className)) list.classList.add(className);
         });
         [["editorFont", "font"], ["editorSize", "size"], ["editorLeading", "leading"], ["editorAlign", "align"]]
@@ -851,7 +856,7 @@
       var tagAktif = [];
 
       function prosesFormatTeks(str) {
-        var token = /(\[fn:\s*([\s\S]*?)\])|(\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\])|(\[\/(font|size|leading)\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
+        var token = /(\[fn:\s*([\s\S]*?)\])|(\[(font:(?:garamond|palatino|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\])|(\[\/(font|size|leading)\])|(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
         var tokens = [];
         var lastIdx = 0;
         var m;
@@ -885,7 +890,8 @@
               if (!inner.closed) {
                 html += esc(current.raw) + inner.html;
               } else if (current.value.indexOf("font:") === 0) {
-                var kelas = current.value === "font:garamond" ? "teks-garamond" : "teks-sans";
+                var kelas = current.value === "font:garamond" ? "teks-garamond" :
+                  current.value === "font:palatino" ? "teks-palatino" : "teks-sans";
                 html += '<span class="' + kelas + '">' + inner.html + "</span>";
               } else if (current.value.indexOf("size:") === 0) {
                 html += '<span style="font-size:' + esc(current.value.slice(5)) + 'px">' + inner.html + "</span>";
@@ -919,7 +925,7 @@
       function normalisasiTagInline(str) {
         var pembuka = tagAktif.map(function (tag) { return tag.buka; }).join("");
         var stack = tagAktif.slice();
-        var re = /\[(font:(?:garamond|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\]|\[\/(font|size|leading)\]/g;
+        var re = /\[(font:(?:garamond|palatino|sans)|size:\d{2}|leading:\d+(?:\.\d+)?)\]|\[\/(font|size|leading)\]/g;
         var m;
         while ((m = re.exec(str)) !== null) {
           if (m[1]) {
@@ -970,6 +976,7 @@
         else if (meta.align === "justify") kelasList.push("rata-justify");
 
         if (meta.font === "garamond") kelasList.push("teks-garamond");
+        else if (meta.font === "palatino") kelasList.push("teks-palatino");
         else if (meta.font === "sans") kelasList.push("teks-sans");
 
         if (meta.size && /^\d{2}$/.test(meta.size)) {
@@ -1039,6 +1046,7 @@
       if (node.tagName === "EM" || node.tagName === "I") hasil = "*" + hasil + "*";
       if (node.tagName === "SPAN") {
         if (node.classList.contains("teks-garamond")) hasil = "[font:garamond]" + hasil + "[/font]";
+        else if (node.classList.contains("teks-palatino")) hasil = "[font:palatino]" + hasil + "[/font]";
         else if (node.classList.contains("teks-sans")) hasil = "[font:sans]" + hasil + "[/font]";
         var ukuran = node.style.fontSize.match(/^(\d{1,2})px$/);
         if (ukuran) hasil = "[size:" + ukuran[1] + "]" + hasil + "[/size]";
@@ -1053,6 +1061,7 @@
       var meta = [];
       var font = node.dataset.editorFont ||
         (node.classList.contains("teks-garamond") ? "garamond" :
+          node.classList.contains("teks-palatino") ? "palatino" :
           node.classList.contains("teks-sans") ? "sans" : "");
       var align = node.dataset.editorAlign ||
         (node.classList.contains("rata-tengah") ? "tengah" :

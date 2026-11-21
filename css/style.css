@@ -320,9 +320,16 @@ main {
 .baca-isi li:has(> .teks-garamond) {
   font-family: var(--serif);
 }
+.baca-isi li:has(> .teks-palatino) {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+}
 .baca-isi ol.teks-garamond li,
 .baca-isi ul.teks-garamond li {
   font-family: var(--serif);
+}
+.baca-isi ol.teks-palatino li,
+.baca-isi ul.teks-palatino li {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
 }
 .baca-isi ol[style*="font-size"] .teks-garamond,
 .baca-isi ul[style*="font-size"] .teks-garamond {
@@ -341,6 +348,9 @@ main {
   font-family: var(--serif);
   font-size: 1.15em;
   line-height: 0.95;
+}
+.teks-palatino {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
 }
 .teks-sans {
   font-family: var(--sans);
