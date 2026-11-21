@@ -149,6 +149,12 @@
     if (t.length <= EXCERPT) return t;
     return t.slice(0, EXCERPT).replace(/\s+\S*$/, "") + "...";
   }
+  function excerptKartu(isi) {
+    var teks = Array.isArray(isi) ? isi.join(" ") : String(isi || "");
+    teks = bersihkanTag(teks.replace(/<[^>]*>/g, " "));
+    if (teks.length <= 110) return teks;
+    return teks.slice(0, 110).replace(/\s+\S*$/, "") + "...";
+  }
   function url(t) { return root + "baca.html?id=" + encodeURIComponent(t.id); }
   function cocok(t, q) {
     if (!q) return true;
@@ -327,18 +333,130 @@
   }
 
   /* ---------- Beranda ---------- */
+  var deckGesture = null;
+  var deckAnimating = false;
+  var deckAnimationTimer = null;
+  var suppressDeckClickCard = null;
+
+  function resetDeckInteraction() {
+    if (deckAnimationTimer !== null) window.clearTimeout(deckAnimationTimer);
+    deckAnimationTimer = null;
+    deckGesture = null;
+    deckAnimating = false;
+    suppressDeckClickCard = null;
+  }
+
+  function renderDaftarKartu(hasil) {
+    var daftar = '<ul class="daftar daftar-kartu" data-current="1">' + hasil.map(function (t) {
+      var tanggal = formatTanggalHtml(t.tanggal);
+      return '<li><a href="' + url(t) + '"><span class="label">' + esc(t.label) + ": " + esc(t.penulis) +
+        '</span><span class="judul-garis">' + esc(t.judul) + '</span><span class="kartu-excerpt">' +
+        esc(excerptKartu(t.isi)) + '</span>' +
+        (tanggal ? '<time class="kartu-tanggal" datetime="' + esc(t.tanggal) + '">' + tanggal + "</time>" : "") +
+        "</a></li>";
+    }).join("") + "</ul>";
+    return daftar + '<p class="deck-counter" aria-live="polite">1 / ' + hasil.length + "</p>";
+  }
+
+  function majukanKartu(list, card, arah) {
+    if (deckAnimating || !card.parentNode) return;
+    deckAnimating = true;
+    card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+    card.style.transform = "translate3d(" + arah * 520 + "px, 0, 0) rotate(" + arah * 18 + "deg)";
+    card.style.opacity = "0";
+    deckAnimationTimer = window.setTimeout(function () {
+      deckAnimationTimer = null;
+      if (card.parentNode === list && list.parentNode) {
+        list.appendChild(card);
+        card.removeAttribute("style");
+        var total = list.children.length;
+        var current = parseInt(list.dataset.current, 10) || 1;
+        current = current >= total ? 1 : current + 1;
+        list.dataset.current = String(current);
+        var counter = list.parentNode.querySelector(".deck-counter");
+        if (counter) counter.textContent = current + " / " + total;
+      }
+      deckAnimating = false;
+    }, 320);
+  }
+
+  wadah.addEventListener("touchstart", function (e) {
+    if (!window.matchMedia("(max-width: 768px)").matches || deckAnimating || e.touches.length !== 1) return;
+    suppressDeckClickCard = null;
+    var list = e.target.closest(".daftar-kartu");
+    var card = e.target.closest("li");
+    if (!list || !card || list.firstElementChild !== card) return;
+    deckGesture = {
+      list: list,
+      card: card,
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      deltaX: 0,
+      axis: ""
+    };
+  }, { passive: true });
+
+  wadah.addEventListener("touchmove", function (e) {
+    if (!deckGesture || e.touches.length !== 1) return;
+    var touch = e.touches[0];
+    var deltaX = touch.clientX - deckGesture.startX;
+    var deltaY = touch.clientY - deckGesture.startY;
+    if (!deckGesture.axis && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 8) {
+      deckGesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
+    }
+    if (deckGesture.axis !== "horizontal") return;
+    deckGesture.deltaX = deltaX;
+    deckGesture.card.style.transition = "none";
+    deckGesture.card.style.transform = "translate3d(" + deltaX + "px, 0, 0) rotate(" + deltaX * 0.04 + "deg)";
+    deckGesture.card.style.opacity = String(Math.max(0.55, 1 - Math.abs(deltaX) / 500));
+    e.preventDefault();
+  }, { passive: false });
+
+  function akhiriGeserKartu() {
+    if (!deckGesture) return;
+    var gesture = deckGesture;
+    deckGesture = null;
+    if (gesture.axis !== "horizontal") return;
+    suppressDeckClickCard = gesture.card;
+    window.setTimeout(function () {
+      if (suppressDeckClickCard === gesture.card) suppressDeckClickCard = null;
+    }, 500);
+    if (Math.abs(gesture.deltaX) > 60) {
+      majukanKartu(gesture.list, gesture.card, gesture.deltaX < 0 ? -1 : 1);
+    } else {
+      gesture.card.style.transition = "";
+      gesture.card.style.transform = "";
+      gesture.card.style.opacity = "";
+    }
+  }
+
+  wadah.addEventListener("touchend", akhiriGeserKartu, { passive: true });
+  wadah.addEventListener("touchcancel", function () {
+    if (!deckGesture) return;
+    deckGesture.card.style.transition = "";
+    deckGesture.card.style.transform = "";
+    deckGesture.card.style.opacity = "";
+    deckGesture = null;
+  }, { passive: true });
+  wadah.addEventListener("click", function (e) {
+    var link = e.target.closest("a");
+    if (!link || !link.closest(".daftar-kartu") || link.closest("li") !== suppressDeckClickCard) return;
+    e.preventDefault();
+    e.stopPropagation();
+    suppressDeckClickCard = null;
+  }, true);
+
   function renderIndex(q) {
+    resetDeckInteraction();
     var hasil = D.tulisan.filter(function (t) { return cocok(t, q); });
     if (!hasil.length) { wadah.innerHTML = '<p class="kosong">Tidak ada tulisan yang cocok.</p>'; return; }
-    wadah.innerHTML = '<ul class="daftar">' + hasil.map(function (t) {
-      return '<li><a href="' + url(t) + '"><span class="label">' + esc(t.label) + ": " + esc(t.penulis) +
-             '</span><span class="judul-garis">' + esc(t.judul) + "</span></a></li>";
-    }).join("") + "</ul>";
+    wadah.innerHTML = renderDaftarKartu(hasil);
   }
 
   /* ---------- Kategori ---------- */
   var hal = 1;
   function renderKategori(q) {
+    resetDeckInteraction();
     var jenis = body.dataset.kategori;
     var hasil = D.tulisan.filter(function (t) { return t.jenis === jenis && cocok(t, q); });
     var total = Math.max(1, Math.ceil(hasil.length / PER_HALAMAN));
@@ -349,7 +467,7 @@
       ? '<div class="grid">' + potong.map(function (t) {
           return '<article class="kartu"><a href="' + url(t) + '"><h2>' + esc(t.judul) + '</h2>' +
                  '<span class="label">' + esc(t.penulis) + '</span><hr><p>' + esc(excerpt(t.isi.join(" "))) + "</p></a></article>";
-        }).join("") + "</div>"
+        }).join("") + "</div>" + renderDaftarKartu(hasil)
       : '<p class="kosong">Tidak ada tulisan yang cocok.</p>';
 
     pager.hidden = false;
