@@ -1371,11 +1371,14 @@
         isi: isi
       };
       var r;
+      var idBaru = slug(judul);
+      if (!idBaru) { info($("i-t"), "Judul tidak valid untuk dijadikan alamat.", true); return; }
+
       if (editT) {
+        baris.id = idBaru;
         r = await db.from("tulisan").update(baris).eq("id", editT);
       } else {
-        baris.id = slug(judul);
-        if (!baris.id) { info($("i-t"), "Judul tidak valid untuk dijadikan alamat.", true); return; }
+        baris.id = idBaru;
         r = await db.from("tulisan").insert(baris);
       }
       if (r.error) {
