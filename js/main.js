@@ -85,6 +85,7 @@
   var input = document.getElementById("cari");
   var wadah = document.getElementById("konten");
   var pager = document.getElementById("pager");
+  var deckStorageKey = "deck_idx_" + location.pathname;
   var idPenulis = halaman === "penulis" ? new URLSearchParams(location.search).get("id") || "" : "";
 
   /* ---------- Ambil data dari Supabase ---------- */
@@ -346,21 +347,38 @@
     suppressDeckClickCard = null;
   }
 
+  function simpanIndeksDeck(index) {
+    window.sessionStorage.setItem(deckStorageKey, String(index));
+  }
+
+  function ambilIndeksDeck(total) {
+    if (!window.matchMedia("(max-width: 768px)").matches || !total) return 0;
+    var index = parseInt(window.sessionStorage.getItem(deckStorageKey), 10);
+    return Number.isFinite(index) && index >= 0 ? index % total : 0;
+  }
+
   function renderDaftarKartu(hasil) {
-    var daftar = '<ul class="daftar daftar-kartu" data-current="1">' + hasil.map(function (t) {
+    var indexAktif = ambilIndeksDeck(hasil.length);
+    var urutan = hasil.slice(indexAktif).concat(hasil.slice(0, indexAktif));
+    var daftar = '<ul class="daftar daftar-kartu" data-current="' + (indexAktif + 1) +
+      '" data-active-index="' + indexAktif + '">' + urutan.map(function (t, index) {
       var tanggal = formatTanggalHtml(t.tanggal);
-      return '<li><a href="' + url(t) + '"><span class="label">' + esc(t.label) + ": " + esc(t.penulis) +
+      var indexTulisan = (indexAktif + index) % hasil.length;
+      return '<li data-deck-index="' + indexTulisan + '"><a href="' + url(t) + '"><span class="label">' + esc(t.label) + ": " + esc(t.penulis) +
         '</span><span class="judul-garis">' + esc(t.judul) + '</span><span class="kartu-excerpt">' +
         esc(excerptKartu(t.isi)) + '</span>' +
         (tanggal ? '<time class="kartu-tanggal" datetime="' + esc(t.tanggal) + '">' + tanggal + "</time>" : "") +
         "</a></li>";
     }).join("") + "</ul>";
-    return daftar + '<p class="deck-counter" aria-live="polite">1 / ' + hasil.length + "</p>";
+    return daftar + '<p class="deck-counter" aria-live="polite">' + (indexAktif + 1) + " / " + hasil.length + "</p>";
   }
 
   function majukanKartu(list, card, arah) {
     if (deckAnimating || !card.parentNode) return;
     deckAnimating = true;
+    var totalKartu = list.children.length;
+    var nextIndex = (parseInt(list.dataset.activeIndex, 10) + 1) % totalKartu;
+    simpanIndeksDeck(nextIndex);
     card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
     card.style.transform = "translate3d(" + arah * 520 + "px, 0, 0) rotate(" + arah * 18 + "deg)";
     card.style.opacity = "0";
@@ -369,10 +387,14 @@
       if (card.parentNode === list && list.parentNode) {
         list.appendChild(card);
         card.removeAttribute("style");
+        card.classList.remove("is-dragging");
         var total = list.children.length;
-        var current = parseInt(list.dataset.current, 10) || 1;
-        current = current >= total ? 1 : current + 1;
+        var currentCard = list.firstElementChild;
+        var activeIndex = parseInt(currentCard.dataset.deckIndex, 10);
+        var current = activeIndex + 1;
+        list.dataset.activeIndex = String(activeIndex);
         list.dataset.current = String(current);
+        simpanIndeksDeck(activeIndex);
         var counter = list.parentNode.querySelector(".deck-counter");
         if (counter) counter.textContent = current + " / " + total;
       }
@@ -406,7 +428,8 @@
     }
     if (deckGesture.axis !== "horizontal") return;
     deckGesture.deltaX = deltaX;
-    deckGesture.card.style.transition = "none";
+    deckGesture.card.style.transition = "transform 0s, opacity 0s, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease";
+    deckGesture.card.classList.add("is-dragging");
     deckGesture.card.style.transform = "translate3d(" + deltaX + "px, 0, 0) rotate(" + deltaX * 0.04 + "deg)";
     deckGesture.card.style.opacity = String(Math.max(0.55, 1 - Math.abs(deltaX) / 500));
     e.preventDefault();
@@ -427,6 +450,7 @@
       gesture.card.style.transition = "";
       gesture.card.style.transform = "";
       gesture.card.style.opacity = "";
+      gesture.card.classList.remove("is-dragging");
     }
   }
 
@@ -436,14 +460,24 @@
     deckGesture.card.style.transition = "";
     deckGesture.card.style.transform = "";
     deckGesture.card.style.opacity = "";
+    deckGesture.card.classList.remove("is-dragging");
     deckGesture = null;
   }, { passive: true });
   wadah.addEventListener("click", function (e) {
     var link = e.target.closest("a");
-    if (!link || !link.closest(".daftar-kartu") || link.closest("li") !== suppressDeckClickCard) return;
-    e.preventDefault();
-    e.stopPropagation();
-    suppressDeckClickCard = null;
+    if (!link) return;
+    var list = link.closest(".daftar-kartu");
+    var card = link.closest("li");
+    if (!list || !card) return;
+    if (card === suppressDeckClickCard) {
+      e.preventDefault();
+      e.stopPropagation();
+      suppressDeckClickCard = null;
+      return;
+    }
+    if (window.matchMedia("(max-width: 768px)").matches) {
+      simpanIndeksDeck(parseInt(card.dataset.deckIndex, 10));
+    }
   }, true);
 
   function renderIndex(q) {
@@ -556,7 +590,10 @@
   if (input) {
     var awal = param("q");
     if (awal && halaman === "index") input.value = awal;
-    input.addEventListener("input", render);
+    input.addEventListener("input", function () {
+      if (halaman === "index" || halaman === "kategori") simpanIndeksDeck(0);
+      render();
+    });
     input.addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
       e.preventDefault();
