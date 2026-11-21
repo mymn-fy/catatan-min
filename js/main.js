@@ -418,7 +418,7 @@
     var nextIndex = (parseInt(list.dataset.activeIndex, 10) + 1) % totalKartu;
     simpanIndeksDeck(nextIndex);
     card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
-    card.style.transform = "translate3d(" + arah * 520 + "px, 0, 0) rotate(" + arah * 18 + "deg)";
+    card.style.transform = "translate3d(" + arah * 520 + "px, 0, 0) rotate(" + arah * 18 + "deg) scale(1.02)";
     card.style.opacity = "0";
     deckAnimationTimer = window.setTimeout(function () {
       deckAnimationTimer = null;
@@ -469,7 +469,7 @@
     deckGesture.deltaX = deltaX;
     deckGesture.card.style.transition = "transform 0s, opacity 0s, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease";
     deckGesture.card.classList.add("is-dragging");
-    deckGesture.card.style.transform = "translate3d(" + deltaX + "px, 0, 0) rotate(" + deltaX * 0.04 + "deg)";
+    deckGesture.card.style.transform = "translate3d(" + deltaX + "px, 0, 0) rotate(" + deltaX * 0.04 + "deg) scale(1.02)";
     deckGesture.card.style.opacity = String(Math.max(0.55, 1 - Math.abs(deltaX) / 500));
     e.preventDefault();
   }, { passive: false });
