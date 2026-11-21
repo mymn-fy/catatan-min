@@ -44,6 +44,28 @@
   }
 
   var body = document.body;
+  var liquidGlassMedia = window.matchMedia("(max-width: 768px)");
+
+  function pasangFilterLiquidGlass() {
+    if (!liquidGlassMedia.matches || document.getElementById("liquid-glass-refraction-svg")) return;
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "liquid-glass-refraction-svg";
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("style", "position:fixed;width:0;height:0;pointer-events:none;");
+    svg.innerHTML = '<defs><filter id="liquid-glass-refraction" x="-20%" y="-20%" width="140%" height="140%">' +
+      '<feTurbulence type="fractalNoise" baseFrequency="0.012 0.015" numOctaves="2" seed="3" result="glass-noise"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="glass-noise" scale="18" xChannelSelector="R" yChannelSelector="G" result="refracted-backdrop"/>' +
+      '<feComposite in="SourceGraphic" in2="refracted-backdrop" operator="arithmetic" k1="0" k2="0.8" k3="0.2" k4="0"/>' +
+      "</filter></defs>";
+    body.appendChild(svg);
+  }
+
+  pasangFilterLiquidGlass();
+  if (liquidGlassMedia.addEventListener) {
+    liquidGlassMedia.addEventListener("change", pasangFilterLiquidGlass);
+  } else if (liquidGlassMedia.addListener) {
+    liquidGlassMedia.addListener(pasangFilterLiquidGlass);
+  }
 
   /* ---------- Efek Grid Background Mengikuti Kursor ---------- */
   if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
@@ -385,14 +407,32 @@
   function perbaruiTeksLatar(list) {
     var latar = list.parentNode && list.parentNode.querySelector(".deck-bg-text");
     if (!latar) return;
-    latar.classList.remove("is-visible");
     if (deckBackgroundTimer !== null) window.clearTimeout(deckBackgroundTimer);
+    deckBackgroundTimer = null;
+    if (latar.classList.contains("is-refracting")) {
+      latar.textContent = teksLatarDeck(deckData, currentIndex);
+      latar.classList.add("is-visible");
+      return;
+    }
+    latar.classList.remove("is-visible");
     deckBackgroundTimer = window.setTimeout(function () {
       deckBackgroundTimer = null;
       if (!latar.parentNode) return;
       latar.textContent = teksLatarDeck(deckData, currentIndex);
       latar.classList.add("is-visible");
     }, 160);
+  }
+
+  function setelRefraksiLatar(list, aktif, shift) {
+    var latar = list.parentNode && list.parentNode.querySelector(".deck-bg-text");
+    if (!latar) return;
+    if (aktif) {
+      latar.style.setProperty("--bg-shift", Math.max(-8, Math.min(8, shift)) + "px");
+      latar.classList.add("is-refracting");
+    } else {
+      latar.classList.remove("is-refracting");
+      latar.style.setProperty("--bg-shift", "0px");
+    }
   }
 
   function renderDaftarKartu(hasil) {
@@ -452,7 +492,7 @@
     simpanIndeksDeck(currentIndex);
   }
 
-  function pindahkanKartu(list, card, langkah) {
+  function pindahkanKartu(list, card, langkah, refraksiAnimasi) {
     if (isAnimating || !card || !card.parentNode || deckData.length <= 1) return;
     var total = deckData.length;
     var indexBerikutnya = currentIndex + langkah;
@@ -461,6 +501,7 @@
     if (currentIndex === parseInt(card.dataset.deckIndex, 10)) return;
 
     isAnimating = true;
+    if (refraksiAnimasi) setelRefraksiLatar(list, true, langkah > 0 ? 4 : -4);
     perbaruiTumpukanDeck(list);
     card.style.zIndex = "11";
     card.style.visibility = "visible";
@@ -476,6 +517,7 @@
         card.removeAttribute("style");
         card.classList.remove("is-dragging");
       }
+      if (refraksiAnimasi) setelRefraksiLatar(list, false, 0);
       isAnimating = false;
     }, 300);
   }
@@ -487,11 +529,11 @@
     e.stopPropagation();
     var list = wadah.querySelector(".daftar-kartu");
     if (!list) return;
-    pindahkanKartu(list, list.firstElementChild, tombol.classList.contains("deck-control-next") ? 1 : -1);
+    pindahkanKartu(list, list.firstElementChild, tombol.classList.contains("deck-control-next") ? 1 : -1, true);
   });
 
   function navigasikanKartuDenganGeser(list, card, deltaX) {
-    pindahkanKartu(list, card, deltaX < 0 ? 1 : -1);
+    pindahkanKartu(list, card, deltaX < 0 ? 1 : -1, false);
   }
 
   wadah.addEventListener("touchstart", function (e) {
@@ -515,11 +557,13 @@
     var touch = e.touches[0];
     var deltaX = touch.clientX - deckGesture.startX;
     var deltaY = touch.clientY - deckGesture.startY;
-    if (!deckGesture.axis && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 8) {
+    if (!deckGesture.axis && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 6) {
       deckGesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
     }
     if (deckGesture.axis !== "horizontal") return;
     deckGesture.deltaX = deltaX;
+    setelRefraksiLatar(deckGesture.list, true, -deltaX * 0.04);
+    deckGesture.card.style.setProperty("--glare-x", Math.max(0, Math.min(100, 50 + deltaX / 3)) + "%");
     deckGesture.card.style.transition = "transform 0s, opacity 0s, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease";
     deckGesture.card.classList.add("is-dragging");
     deckGesture.card.style.transform = "translate3d(" + deltaX + "px, 0, 0) rotate(" + deltaX * 0.04 + "deg) scale(1.02)";
@@ -536,12 +580,14 @@
     window.setTimeout(function () {
       if (suppressDeckClickCard === gesture.card) suppressDeckClickCard = null;
     }, 500);
+    setelRefraksiLatar(gesture.list, false, 0);
     if (Math.abs(gesture.deltaX) > 60) {
       navigasikanKartuDenganGeser(gesture.list, gesture.card, gesture.deltaX);
     } else {
       gesture.card.style.transition = "";
       gesture.card.style.transform = "";
       gesture.card.style.opacity = "";
+      gesture.card.style.removeProperty("--glare-x");
       gesture.card.classList.remove("is-dragging");
     }
   }
@@ -549,9 +595,11 @@
   wadah.addEventListener("touchend", akhiriGeserKartu, { passive: true });
   wadah.addEventListener("touchcancel", function () {
     if (!deckGesture) return;
+    setelRefraksiLatar(deckGesture.list, false, 0);
     deckGesture.card.style.transition = "";
     deckGesture.card.style.transform = "";
     deckGesture.card.style.opacity = "";
+    deckGesture.card.style.removeProperty("--glare-x");
     deckGesture.card.classList.remove("is-dragging");
     deckGesture = null;
   }, { passive: true });
