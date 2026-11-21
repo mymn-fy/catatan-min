@@ -44,28 +44,6 @@
   }
 
   var body = document.body;
-  var liquidGlassMedia = window.matchMedia("(max-width: 768px)");
-
-  function pasangFilterLiquidGlass() {
-    if (!liquidGlassMedia.matches || document.getElementById("liquid-glass-refraction-svg")) return;
-    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.id = "liquid-glass-refraction-svg";
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("style", "position:fixed;width:0;height:0;pointer-events:none;");
-    svg.innerHTML = '<defs><filter id="liquid-glass-refraction" x="-20%" y="-20%" width="140%" height="140%">' +
-      '<feTurbulence type="fractalNoise" baseFrequency="0.012 0.015" numOctaves="2" seed="3" result="glass-noise"/>' +
-      '<feDisplacementMap in="SourceGraphic" in2="glass-noise" scale="18" xChannelSelector="R" yChannelSelector="G" result="refracted-backdrop"/>' +
-      '<feComposite in="SourceGraphic" in2="refracted-backdrop" operator="arithmetic" k1="0" k2="0.8" k3="0.2" k4="0"/>' +
-      "</filter></defs>";
-    body.appendChild(svg);
-  }
-
-  pasangFilterLiquidGlass();
-  if (liquidGlassMedia.addEventListener) {
-    liquidGlassMedia.addEventListener("change", pasangFilterLiquidGlass);
-  } else if (liquidGlassMedia.addListener) {
-    liquidGlassMedia.addListener(pasangFilterLiquidGlass);
-  }
 
   /* ---------- Efek Grid Background Mengikuti Kursor ---------- */
   if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
@@ -474,52 +452,72 @@
     if (next) next.disabled = total <= 1 || (!deckLoop && currentIndex === total - 1);
   }
 
-  function perbaruiTumpukanDeck(list) {
-    var total = deckData.length;
-    if (!total) return;
-    var kartu = Array.prototype.slice.call(list.children);
-    for (var i = 0; i < total; i++) {
-      var indexKartu = (currentIndex + i) % total;
-      var card = kartu.find(function (item) {
-        return parseInt(item.dataset.deckIndex, 10) === indexKartu;
-      });
-      if (card) list.appendChild(card);
-    }
-    list.dataset.activeIndex = String(currentIndex);
-    list.dataset.current = String(currentIndex + 1);
-    perbaruiNavigasiDeck(list);
-    perbaruiTeksLatar(list);
-    simpanIndeksDeck(currentIndex);
-  }
-
   function pindahkanKartu(list, card, langkah, refraksiAnimasi) {
     if (isAnimating || !card || !card.parentNode || deckData.length <= 1) return;
+    var activeCard = list.firstElementChild;
+    if (card !== activeCard) return;
     var total = deckData.length;
     var indexBerikutnya = currentIndex + langkah;
-    if (deckLoop) currentIndex = (indexBerikutnya + total) % total;
-    else currentIndex = Math.max(0, Math.min(indexBerikutnya, total - 1));
-    if (currentIndex === parseInt(card.dataset.deckIndex, 10)) return;
+    if (deckLoop) indexBerikutnya = (indexBerikutnya + total) % total;
+    else indexBerikutnya = Math.max(0, Math.min(indexBerikutnya, total - 1));
+    if (indexBerikutnya === currentIndex) return;
 
     isAnimating = true;
     if (refraksiAnimasi) setelRefraksiLatar(list, true, langkah > 0 ? 4 : -4);
-    perbaruiTumpukanDeck(list);
-    card.style.zIndex = "11";
-    card.style.visibility = "visible";
-    card.style.opacity = "1";
-    card.offsetWidth;
-    var arahKeluar = langkah > 0 ? -1 : 1;
-    card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
-    card.style.transform = "translate3d(" + arahKeluar * 520 + "px, 0, 0) rotate(" + arahKeluar * 18 + "deg) scale(1.02)";
-    card.style.opacity = "0";
+    if (activeCard.classList.contains("is-dragging")) {
+      activeCard.style.transition = "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease";
+      activeCard.style.removeProperty("--glare-x");
+      activeCard.classList.remove("is-dragging");
+      if (langkah < 0) {
+        activeCard.style.transform = "";
+        activeCard.style.opacity = "";
+      }
+    }
+    var incomingCard;
+    if (langkah > 0) {
+      incomingCard = activeCard.nextElementSibling;
+      if (!incomingCard) {
+        isAnimating = false;
+        if (refraksiAnimasi) setelRefraksiLatar(list, false, 0);
+        return;
+      }
+      activeCard.classList.add("is-exiting-next");
+      incomingCard.classList.add("is-entering-next");
+    } else {
+      incomingCard = list.lastElementChild;
+      if (!incomingCard || incomingCard === activeCard) {
+        isAnimating = false;
+        if (refraksiAnimasi) setelRefraksiLatar(list, false, 0);
+        return;
+      }
+      list.insertBefore(incomingCard, activeCard);
+      incomingCard.classList.add("is-entering-back", "is-entering-from-left");
+      void incomingCard.offsetWidth;
+      incomingCard.classList.remove("is-entering-from-left");
+    }
+
     deckAnimationTimer = window.setTimeout(function () {
       deckAnimationTimer = null;
-      if (card.parentNode === list && list.parentNode) {
-        card.removeAttribute("style");
-        card.classList.remove("is-dragging");
+      if (activeCard.parentNode === list && list.parentNode) {
+        if (langkah > 0) {
+          list.appendChild(activeCard);
+          activeCard.classList.remove("is-exiting-next", "is-dragging");
+          activeCard.removeAttribute("style");
+          incomingCard.classList.remove("is-entering-next");
+        } else {
+          incomingCard.classList.remove("is-entering-back", "is-entering-from-left");
+          activeCard.removeAttribute("style");
+        }
+        currentIndex = indexBerikutnya;
+        list.dataset.activeIndex = String(currentIndex);
+        list.dataset.current = String(currentIndex + 1);
+        perbaruiNavigasiDeck(list);
+        simpanIndeksDeck(currentIndex);
+        perbaruiTeksLatar(list);
       }
       if (refraksiAnimasi) setelRefraksiLatar(list, false, 0);
       isAnimating = false;
-    }, 300);
+    }, 220);
   }
 
   wadah.addEventListener("click", function (e) {
@@ -564,7 +562,7 @@
     deckGesture.deltaX = deltaX;
     setelRefraksiLatar(deckGesture.list, true, -deltaX * 0.04);
     deckGesture.card.style.setProperty("--glare-x", Math.max(0, Math.min(100, 50 + deltaX / 3)) + "%");
-    deckGesture.card.style.transition = "transform 0s, opacity 0s, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease";
+    deckGesture.card.style.transition = "transform 0s, opacity 0s";
     deckGesture.card.classList.add("is-dragging");
     deckGesture.card.style.transform = "translate3d(" + deltaX + "px, 0, 0) rotate(" + deltaX * 0.04 + "deg) scale(1.02)";
     deckGesture.card.style.opacity = String(Math.max(0.55, 1 - Math.abs(deltaX) / 500));
