@@ -85,17 +85,38 @@
   var input = document.getElementById("cari");
   var wadah = document.getElementById("konten");
   var pager = document.getElementById("pager");
+  var idPenulis = halaman === "penulis" ? new URLSearchParams(location.search).get("id") || "" : "";
 
   /* ---------- Ambil data dari Supabase ---------- */
-  var hasilDb = await Promise.all([
-    db.from("tulisan").select("*").order("dibuat", { ascending: false }),
-    db.from("penulis").select("*").order("nama")
-  ]);
-  if (hasilDb[0].error || hasilDb[1].error) {
-    wadah.innerHTML = '<p class="kosong">Gagal memuat data.</p>';
-    return;
+  var D;
+  if (idPenulis) {
+    var hasilPenulis = await db.from("penulis").select("*").eq("id", idPenulis).maybeSingle();
+    if (hasilPenulis.error) {
+      wadah.innerHTML = '<p class="kosong">Gagal memuat data.</p>';
+      return;
+    }
+    if (!hasilPenulis.data) {
+      D = { tulisan: [], penulis: [] };
+    } else {
+      var hasilKarya = await db.from("tulisan").select("*")
+        .eq("penulis", hasilPenulis.data.nama).order("dibuat", { ascending: false });
+      if (hasilKarya.error) {
+        wadah.innerHTML = '<p class="kosong">Gagal memuat data.</p>';
+        return;
+      }
+      D = { tulisan: hasilKarya.data, penulis: [hasilPenulis.data] };
+    }
+  } else {
+    var hasilDb = await Promise.all([
+      db.from("tulisan").select("*").order("dibuat", { ascending: false }),
+      db.from("penulis").select("*").order("nama")
+    ]);
+    if (hasilDb[0].error || hasilDb[1].error) {
+      wadah.innerHTML = '<p class="kosong">Gagal memuat data.</p>';
+      return;
+    }
+    D = { tulisan: hasilDb[0].data, penulis: hasilDb[1].data };
   }
-  var D = { tulisan: hasilDb[0].data, penulis: hasilDb[1].data };
 
   /* ---------- Util ---------- */
   function esc(s) {
@@ -359,15 +380,49 @@
 
   /* ---------- Penulis ---------- */
   function renderPenulis(q) {
+    if (idPenulis) {
+      var penulis = D.penulis[0];
+      if (!penulis) {
+        document.title = "Penulis tidak ditemukan | Catatan Min";
+        wadah.innerHTML = '<p class="kosong">Penulis tidak ditemukan.</p>' +
+          '<a class="tautan-kembali" href="penulis.html">← Semua Penulis</a>';
+        return;
+      }
+
+      document.title = penulis.nama + " | Catatan Min";
+      var fotoProfil = penulis.foto
+        ? (/^https?:\/\//.test(penulis.foto) ? penulis.foto : root + penulis.foto)
+        : "";
+      var karya = D.tulisan.filter(function (t) { return t.penulis === penulis.nama; });
+      wadah.innerHTML = '<a class="tautan-kembali" href="penulis.html">← Semua Penulis</a>' +
+        '<section class="profil-penulis' + (fotoProfil ? "" : " tanpa-foto") + '">' +
+          (fotoProfil ? '<img class="foto-profil" src="' + esc(fotoProfil) + '" alt="Foto ' + esc(penulis.nama) + '">' : "") +
+          '<div class="profil-penulis-info">' +
+            '<span class="label">' + esc(penulis.label || "Penulis") + '</span>' +
+            '<h1 class="judul-garis">' + esc(penulis.nama) + '</h1>' +
+            (penulis.bio ? '<p class="bio-penulis">' + esc(penulis.bio) + '</p>' : "") +
+          '</div>' +
+        '</section>' +
+        '<h2 class="judul-karya">Karya</h2>' +
+        (karya.length
+          ? '<ul class="daftar">' + karya.map(function (t) {
+              return '<li><a href="' + url(t) + '"><span class="label">' + esc(t.label) +
+                '</span><span class="judul-garis">' + esc(t.judul) + '</span></a></li>';
+            }).join("") + '</ul>'
+          : '<p class="kosong">Belum ada tulisan dari penulis ini.</p>');
+      return;
+    }
+
     var hasil = D.penulis.filter(function (p) {
       return !q || (p.nama + " " + (p.bio || "")).toLowerCase().indexOf(q.toLowerCase()) !== -1;
     });
     wadah.innerHTML = hasil.length
       ? '<div class="grid">' + hasil.map(function (p) {
           var foto = p.foto ? (/^https?:\/\//.test(p.foto) ? p.foto : root + p.foto) : "";
-          return '<article class="kartu">' +
+          return '<article class="kartu kartu-penulis"><a href="penulis.html?id=' + encodeURIComponent(p.id) + '">' +
                  (foto ? '<img class="foto" src="' + esc(foto) + '" alt="Foto ' + esc(p.nama) + '">' : "") +
-                 '<h2>' + esc(p.nama) + '</h2><span class="label">' + esc(p.label) + '</span><hr><p>' + esc(excerpt(p.bio)) + "</p></article>";
+                 '<h2>' + esc(p.nama) + '</h2><span class="label">' + esc(p.label) + '</span><hr><p>' +
+                 esc(excerpt(p.bio)) + "</p></a></article>";
         }).join("") + "</div>"
       : '<p class="kosong">Tidak ada penulis yang cocok.</p>';
   }
