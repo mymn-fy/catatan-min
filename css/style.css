@@ -284,6 +284,9 @@ main {
 .deck-counter {
   display: none;
 }
+.deck-bg-text {
+  display: none;
+}
 .daftar-kartu .kartu-excerpt,
 .daftar-kartu .kartu-tanggal {
   display: none;
@@ -760,7 +763,13 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    position: relative;
+    z-index: 1;
     margin-top: 0;
+  }
+  body[data-page="kategori"] .judul-halaman {
+    position: relative;
+    z-index: 1;
   }
   body[data-page="index"] #konten,
   body[data-page="kategori"] #konten {
@@ -774,6 +783,7 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
   body[data-page="index"] #konten .daftar-kartu,
   body[data-page="kategori"] #konten .daftar-kartu {
     position: relative;
+    z-index: 1;
     display: grid;
     grid-template: 1fr / 1fr;
     align-items: center;
@@ -785,6 +795,28 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
     overflow-x: hidden;
     overflow-x: clip;
     touch-action: pan-y;
+  }
+  .deck-bg-text {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: block;
+    overflow: hidden;
+    padding: 56px 0 0;
+    color: rgba(0, 0, 0, 0.14);
+    font-family: var(--serif);
+    font-size: clamp(24px, 6.8vw, 30px);
+    line-height: 1.32;
+    text-align: justify;
+    word-break: normal;
+    overflow-wrap: break-word;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .deck-bg-text.is-visible {
+    opacity: 1;
   }
   body[data-page="kategori"] #konten > .grid,
   body[data-page="kategori"] #pager {
@@ -803,9 +835,16 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
     background: rgba(255, 255, 255, 0.58);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow:
+      0 14px 30px rgba(0, 0, 0, 0.12),
+      0 2px 8px rgba(0, 0, 0, 0.06);
     transform-origin: center;
-    transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    transition:
+      transform 0.3s ease,
+      opacity 0.3s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease,
+      background 0.2s ease;
   }
   .daftar-kartu li:first-child {
     z-index: 10;
@@ -890,6 +929,8 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
     font-size: 12px;
   }
   .deck-counter {
+    position: relative;
+    z-index: 1;
     display: table;
     margin: 12px 0 0;
     margin-inline: auto;
@@ -900,6 +941,11 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
     font-family: var(--serif);
     font-size: 18px;
     line-height: 1.2;
+  }
+  .judul-halaman {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 18px; /* Opsional: mengatur jarak bawah ke tumpukan kartu */
   }
 }
 

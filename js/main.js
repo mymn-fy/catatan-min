@@ -150,9 +150,12 @@
     if (t.length <= EXCERPT) return t;
     return t.slice(0, EXCERPT).replace(/\s+\S*$/, "") + "...";
   }
-  function excerptKartu(isi) {
+  function teksPolosDeck(isi) {
     var teks = Array.isArray(isi) ? isi.join(" ") : String(isi || "");
-    teks = bersihkanTag(teks.replace(/<[^>]*>/g, " "));
+    return bersihkanTag(teks.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  }
+  function excerptKartu(isi) {
+    var teks = teksPolosDeck(isi);
     if (teks.length <= 110) return teks;
     return teks.slice(0, 110).replace(/\s+\S*$/, "") + "...";
   }
@@ -337,14 +340,19 @@
   var deckGesture = null;
   var deckAnimating = false;
   var deckAnimationTimer = null;
+  var deckBackgroundTimer = null;
   var suppressDeckClickCard = null;
+  var deckData = [];
 
   function resetDeckInteraction() {
     if (deckAnimationTimer !== null) window.clearTimeout(deckAnimationTimer);
+    if (deckBackgroundTimer !== null) window.clearTimeout(deckBackgroundTimer);
     deckAnimationTimer = null;
+    deckBackgroundTimer = null;
     deckGesture = null;
     deckAnimating = false;
     suppressDeckClickCard = null;
+    deckData = [];
   }
 
   function simpanIndeksDeck(index) {
@@ -357,9 +365,38 @@
     return Number.isFinite(index) && index >= 0 ? index % total : 0;
   }
 
+  function teksLatarDeck(hasil, indexAktif) {
+    if (!hasil.length) return "";
+    var targetPanjang = Math.max(1200, (window.innerHeight || 768) * 2);
+    var teks = "";
+    for (var i = 0; i < hasil.length && teks.length < targetPanjang; i++) {
+      var bagian = teksPolosDeck(hasil[(indexAktif + i) % hasil.length].isi);
+      if (bagian) teks += (teks ? " " : "") + bagian;
+    }
+    if (!teks) teks = String(hasil[indexAktif].judul || "");
+    var isiLatar = teks;
+    while (isiLatar.length < targetPanjang && teks) isiLatar += " " + teks;
+    return isiLatar;
+  }
+
+  function perbaruiTeksLatar(list, indexAktif) {
+    var latar = list.parentNode && list.parentNode.querySelector(".deck-bg-text");
+    if (!latar) return;
+    latar.classList.remove("is-visible");
+    if (deckBackgroundTimer !== null) window.clearTimeout(deckBackgroundTimer);
+    deckBackgroundTimer = window.setTimeout(function () {
+      deckBackgroundTimer = null;
+      if (!latar.parentNode) return;
+      latar.textContent = teksLatarDeck(deckData, indexAktif);
+      latar.classList.add("is-visible");
+    }, 160);
+  }
+
   function renderDaftarKartu(hasil) {
+    deckData = hasil;
     var indexAktif = ambilIndeksDeck(hasil.length);
     var urutan = hasil.slice(indexAktif).concat(hasil.slice(0, indexAktif));
+    var teksLatar = esc(teksLatarDeck(hasil, indexAktif));
     var daftar = '<ul class="daftar daftar-kartu" data-current="' + (indexAktif + 1) +
       '" data-active-index="' + indexAktif + '">' + urutan.map(function (t, index) {
       var tanggal = formatTanggalHtml(t.tanggal);
@@ -370,7 +407,8 @@
         (tanggal ? '<time class="kartu-tanggal" datetime="' + esc(t.tanggal) + '">' + tanggal + "</time>" : "") +
         "</a></li>";
     }).join("") + "</ul>";
-    return daftar + '<p class="deck-counter" aria-live="polite">' + (indexAktif + 1) + " / " + hasil.length + "</p>";
+    return '<div class="deck-bg-text is-visible" aria-hidden="true">' + teksLatar + "</div>" +
+      daftar + '<p class="deck-counter" aria-live="polite">' + (indexAktif + 1) + " / " + hasil.length + "</p>";
   }
 
   function majukanKartu(list, card, arah) {
@@ -397,6 +435,7 @@
         simpanIndeksDeck(activeIndex);
         var counter = list.parentNode.querySelector(".deck-counter");
         if (counter) counter.textContent = current + " / " + total;
+        perbaruiTeksLatar(list, activeIndex);
       }
       deckAnimating = false;
     }, 320);
