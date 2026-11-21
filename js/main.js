@@ -338,11 +338,13 @@
 
   /* ---------- Beranda ---------- */
   var deckGesture = null;
-  var deckAnimating = false;
+  var isAnimating = false;
   var deckAnimationTimer = null;
   var deckBackgroundTimer = null;
   var suppressDeckClickCard = null;
   var deckData = [];
+  var currentIndex = 0;
+  var deckLoop = true;
 
   function resetDeckInteraction() {
     if (deckAnimationTimer !== null) window.clearTimeout(deckAnimationTimer);
@@ -350,9 +352,10 @@
     deckAnimationTimer = null;
     deckBackgroundTimer = null;
     deckGesture = null;
-    deckAnimating = false;
+    isAnimating = false;
     suppressDeckClickCard = null;
     deckData = [];
+    currentIndex = 0;
   }
 
   function simpanIndeksDeck(index) {
@@ -379,7 +382,7 @@
     return isiLatar;
   }
 
-  function perbaruiTeksLatar(list, indexAktif) {
+  function perbaruiTeksLatar(list) {
     var latar = list.parentNode && list.parentNode.querySelector(".deck-bg-text");
     if (!latar) return;
     latar.classList.remove("is-visible");
@@ -387,62 +390,112 @@
     deckBackgroundTimer = window.setTimeout(function () {
       deckBackgroundTimer = null;
       if (!latar.parentNode) return;
-      latar.textContent = teksLatarDeck(deckData, indexAktif);
+      latar.textContent = teksLatarDeck(deckData, currentIndex);
       latar.classList.add("is-visible");
     }, 160);
   }
 
   function renderDaftarKartu(hasil) {
     deckData = hasil;
-    var indexAktif = ambilIndeksDeck(hasil.length);
-    var urutan = hasil.slice(indexAktif).concat(hasil.slice(0, indexAktif));
-    var teksLatar = esc(teksLatarDeck(hasil, indexAktif));
-    var daftar = '<ul class="daftar daftar-kartu" data-current="' + (indexAktif + 1) +
-      '" data-active-index="' + indexAktif + '">' + urutan.map(function (t, index) {
+    currentIndex = ambilIndeksDeck(hasil.length);
+    var urutan = hasil.slice(currentIndex).concat(hasil.slice(0, currentIndex));
+    var teksLatar = esc(teksLatarDeck(hasil, currentIndex));
+    var daftar = '<ul class="daftar daftar-kartu" data-current="' + (currentIndex + 1) +
+      '" data-active-index="' + currentIndex + '">' + urutan.map(function (t, index) {
       var tanggal = formatTanggalHtml(t.tanggal);
-      var indexTulisan = (indexAktif + index) % hasil.length;
+      var indexTulisan = (currentIndex + index) % hasil.length;
       return '<li data-deck-index="' + indexTulisan + '"><a href="' + url(t) + '"><span class="label">' + esc(t.label) + ": " + esc(t.penulis) +
         '</span><span class="judul-garis">' + esc(t.judul) + '</span><span class="kartu-excerpt">' +
         esc(excerptKartu(t.isi)) + '</span>' +
         (tanggal ? '<time class="kartu-tanggal" datetime="' + esc(t.tanggal) + '">' + tanggal + "</time>" : "") +
         "</a></li>";
     }).join("") + "</ul>";
+    var navigasiBackNonaktif = hasil.length <= 1 || (!deckLoop && currentIndex === 0) ? " disabled" : "";
+    var navigasiNextNonaktif = hasil.length <= 1 || (!deckLoop && currentIndex === hasil.length - 1) ? " disabled" : "";
+    var navigasi = '<div class="deck-controls">' +
+      '<button class="deck-control deck-control-back" type="button" aria-label="Tulisan sebelumnya"' + navigasiBackNonaktif + '>' +
+      '<svg width="14" height="22" viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="11,2 3,11 11,20"/></svg>' +
+      "</button>" +
+      '<p class="deck-counter" aria-live="polite">' + (currentIndex + 1) + " / " + hasil.length + "</p>" +
+      '<button class="deck-control deck-control-next" type="button" aria-label="Tulisan berikutnya"' + navigasiNextNonaktif + '>' +
+      '<svg width="14" height="22" viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="3,2 11,11 3,20"/></svg>' +
+      "</button></div>";
     return '<div class="deck-bg-text is-visible" aria-hidden="true">' + teksLatar + "</div>" +
-      daftar + '<p class="deck-counter" aria-live="polite">' + (indexAktif + 1) + " / " + hasil.length + "</p>";
+      daftar + navigasi;
   }
 
-  function majukanKartu(list, card, arah) {
-    if (deckAnimating || !card.parentNode) return;
-    deckAnimating = true;
-    var totalKartu = list.children.length;
-    var nextIndex = (parseInt(list.dataset.activeIndex, 10) + 1) % totalKartu;
-    simpanIndeksDeck(nextIndex);
+  function perbaruiNavigasiDeck(list) {
+    var total = deckData.length;
+    var counter = list.parentNode.querySelector(".deck-counter");
+    if (counter) counter.textContent = (currentIndex + 1) + " / " + total;
+    var back = list.parentNode.querySelector(".deck-control-back");
+    var next = list.parentNode.querySelector(".deck-control-next");
+    if (back) back.disabled = total <= 1 || (!deckLoop && currentIndex === 0);
+    if (next) next.disabled = total <= 1 || (!deckLoop && currentIndex === total - 1);
+  }
+
+  function perbaruiTumpukanDeck(list) {
+    var total = deckData.length;
+    if (!total) return;
+    var kartu = Array.prototype.slice.call(list.children);
+    for (var i = 0; i < total; i++) {
+      var indexKartu = (currentIndex + i) % total;
+      var card = kartu.find(function (item) {
+        return parseInt(item.dataset.deckIndex, 10) === indexKartu;
+      });
+      if (card) list.appendChild(card);
+    }
+    list.dataset.activeIndex = String(currentIndex);
+    list.dataset.current = String(currentIndex + 1);
+    perbaruiNavigasiDeck(list);
+    perbaruiTeksLatar(list);
+    simpanIndeksDeck(currentIndex);
+  }
+
+  function pindahkanKartu(list, card, langkah) {
+    if (isAnimating || !card || !card.parentNode || deckData.length <= 1) return;
+    var total = deckData.length;
+    var indexBerikutnya = currentIndex + langkah;
+    if (deckLoop) currentIndex = (indexBerikutnya + total) % total;
+    else currentIndex = Math.max(0, Math.min(indexBerikutnya, total - 1));
+    if (currentIndex === parseInt(card.dataset.deckIndex, 10)) return;
+
+    isAnimating = true;
+    perbaruiTumpukanDeck(list);
+    card.style.zIndex = "11";
+    card.style.visibility = "visible";
+    card.style.opacity = "1";
+    card.offsetWidth;
+    var arahKeluar = langkah > 0 ? -1 : 1;
     card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
-    card.style.transform = "translate3d(" + arah * 520 + "px, 0, 0) rotate(" + arah * 18 + "deg) scale(1.02)";
+    card.style.transform = "translate3d(" + arahKeluar * 520 + "px, 0, 0) rotate(" + arahKeluar * 18 + "deg) scale(1.02)";
     card.style.opacity = "0";
     deckAnimationTimer = window.setTimeout(function () {
       deckAnimationTimer = null;
       if (card.parentNode === list && list.parentNode) {
-        list.appendChild(card);
         card.removeAttribute("style");
         card.classList.remove("is-dragging");
-        var total = list.children.length;
-        var currentCard = list.firstElementChild;
-        var activeIndex = parseInt(currentCard.dataset.deckIndex, 10);
-        var current = activeIndex + 1;
-        list.dataset.activeIndex = String(activeIndex);
-        list.dataset.current = String(current);
-        simpanIndeksDeck(activeIndex);
-        var counter = list.parentNode.querySelector(".deck-counter");
-        if (counter) counter.textContent = current + " / " + total;
-        perbaruiTeksLatar(list, activeIndex);
       }
-      deckAnimating = false;
-    }, 320);
+      isAnimating = false;
+    }, 300);
+  }
+
+  wadah.addEventListener("click", function (e) {
+    var tombol = e.target.closest(".deck-control");
+    if (!tombol || tombol.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var list = wadah.querySelector(".daftar-kartu");
+    if (!list) return;
+    pindahkanKartu(list, list.firstElementChild, tombol.classList.contains("deck-control-next") ? 1 : -1);
+  });
+
+  function navigasikanKartuDenganGeser(list, card, deltaX) {
+    pindahkanKartu(list, card, deltaX < 0 ? 1 : -1);
   }
 
   wadah.addEventListener("touchstart", function (e) {
-    if (!window.matchMedia("(max-width: 768px)").matches || deckAnimating || e.touches.length !== 1) return;
+    if (!window.matchMedia("(max-width: 768px)").matches || isAnimating || e.touches.length !== 1) return;
     suppressDeckClickCard = null;
     var list = e.target.closest(".daftar-kartu");
     var card = e.target.closest("li");
@@ -484,7 +537,7 @@
       if (suppressDeckClickCard === gesture.card) suppressDeckClickCard = null;
     }, 500);
     if (Math.abs(gesture.deltaX) > 60) {
-      majukanKartu(gesture.list, gesture.card, gesture.deltaX < 0 ? -1 : 1);
+      navigasikanKartuDenganGeser(gesture.list, gesture.card, gesture.deltaX);
     } else {
       gesture.card.style.transition = "";
       gesture.card.style.transform = "";

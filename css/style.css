@@ -284,6 +284,9 @@ main {
 .deck-counter {
   display: none;
 }
+.deck-controls {
+  display: none;
+}
 .deck-bg-text {
   display: none;
 }
@@ -983,12 +986,47 @@ body[data-page="penulis"] #konten .daftar .judul-garis {
     font-family: var(--serif);
     font-size: 12px;
   }
-  .deck-counter {
+  .deck-controls {
     position: relative;
     z-index: 1;
-    display: table;
-    margin: 12px 0 0;
-    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .deck-control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    color: var(--ink);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .deck-control:active {
+    transform: scale(0.92);
+  }
+  .deck-control:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .deck-control svg {
+    display: block;
+  }
+  .deck-counter {
+    position: relative;
+    display: block;
+    margin: 0;
     padding: 6px 22px;
     border-radius: 999px;
     background: var(--ink);
