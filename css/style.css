@@ -247,15 +247,18 @@ main {
 
 /* ===== Label + judul bergaris ===== */
 .label {
+  font-family: var(--serif);
   font-style: italic;
   font-size: clamp(18px, 1.8vw, 28px);
   color: var(--green);
   line-height: 0.95;
+  font-weight: 400;
 }
 .judul-garis {
   display: inline-block;
   margin: 0;
   padding-bottom: 3px;
+  font-family: var(--serif);
   font-size: clamp(30px, 3.54vw, 56px);
   line-height: 1;
   font-weight: 400;
@@ -461,6 +464,315 @@ body[data-page="kategori"] #konten .daftar-kartu {
 }
 .fn-balik:hover {
   text-decoration: underline;
+}
+
+/* ===== Pembaca buku ===== */
+body[data-page="baca"] {
+  padding-bottom: 0;
+}
+body[data-page="baca"] .baca-main {
+  margin-top: 0;
+}
+body[data-page="baca"] #konten {
+  width: 100%;
+}
+.book-reader {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100dvh - 140px);
+  min-height: 500px;
+  max-width: 1120px;
+  margin: 24px auto 0;
+}
+.book-reader-tools {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 5;
+}
+.book-mode-toggle {
+  padding: 5px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font: normal 13px var(--serif);
+  cursor: pointer;
+}
+.book-spread {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  touch-action: pan-y;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 6px;
+  background: #fdfdfc;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    inset 8px 0 10px -10px rgba(0, 0, 0, 0.24),
+    inset -8px 0 10px -10px rgba(0, 0, 0, 0.24);
+}
+.book-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.book-spread::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.03) 47%,
+    rgba(0, 0, 0, 0.11) 50%,
+    rgba(0, 0, 0, 0.03) 53%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.page {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: 36px 40px;
+  background: #fdfdfc;
+}
+.page--blank {
+  background: #fdfdfc;
+}
+.page-content {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-size: 19px;
+  line-height: 1.55;
+}
+.page-content.baca-isi {
+  margin-top: 0;
+}
+.page-content .page-paragraph-fragment {
+  display: inline;
+  margin: 0;
+}
+.page-content .baca-foto,
+.page-content .baca-foto img {
+  break-inside: avoid;
+}
+.page-content .baca-foto img {
+  max-height: 55%;
+  object-fit: contain;
+}
+.book-content-source[hidden] {
+  display: none;
+}
+.book-opening {
+  break-inside: avoid;
+  margin-bottom: 26px;
+}
+.book-opening .label {
+  display: block;
+  margin-bottom: 12px;
+}
+.book-opening .judul-garis {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  font-size: clamp(32px, 3.2vw, 48px);
+  overflow-wrap: anywhere;
+}
+.book-opening .baca-tanggal {
+  margin: 12px 0 0;
+  font-size: 18px;
+}
+.book-reader-error {
+  margin: 0 0 12px;
+  color: #8a1f11;
+  font: 15px var(--sans);
+}
+.book-controls {
+  display: flex;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.book-page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.book-page-button:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+.book-page-button svg {
+  display: block;
+}
+.book-page-button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.book-page-button:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+.book-page-indicator {
+  min-width: 130px;
+  color: var(--ink);
+  font: normal 16px var(--serif);
+  text-align: center;
+}
+.book-progress {
+  position: absolute;
+  right: 1px;
+  bottom: 48px;
+  left: 1px;
+  z-index: 3;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 0 0 6px 6px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.book-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--green);
+  transition: transform 0.35s ease;
+}
+.book-footnote-popover {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  left: 20px;
+  z-index: 4;
+  max-height: 36%;
+  overflow: auto;
+  padding: 18px 48px 18px 20px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.book-footnote-popover[hidden] {
+  display: none;
+}
+.book-footnote-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #444;
+  font: 26px/1 var(--sans);
+  cursor: pointer;
+}
+.book-reader.is-scroll-mode {
+  height: auto;
+  min-height: 0;
+  padding-top: 44px;
+}
+.book-reader.is-scroll-mode .book-spread {
+  flex: initial;
+  height: auto;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.book-reader.is-scroll-mode .book-viewport {
+  display: none;
+}
+.book-reader.is-scroll-mode .book-spread::before,
+.book-reader.is-scroll-mode .book-controls,
+.book-reader.is-scroll-mode .book-progress {
+  display: none;
+}
+.book-reader.is-scroll-mode .book-content-source {
+  display: block;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 36px 40px;
+  background: #fdfdfc;
+}
+.book-reader.is-scroll-mode .book-content-source .baca-isi {
+  margin-top: 30px;
+  font-size: 22px;
+}
+.book-reader.is-scroll-mode .book-footnote-popover {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  max-width: 720px;
+  margin-inline: auto;
+}
+@media (max-width: 900px) {
+  .book-reader {
+    width: min(100%, calc(100dvh - 200px));
+    height: calc(100dvh - 140px);
+    min-height: 500px;
+  }
+  .book-spread {
+    padding: 0;
+  }
+  .book-spread::before {
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.1) 0,
+      rgba(0, 0, 0, 0.025) 8px,
+      transparent 22px
+    );
+  }
+  .page {
+    padding: 28px 22px;
+  }
+  .page-content {
+    font-size: 18px;
+  }
+  .book-opening .judul-garis {
+    font-size: clamp(30px, 8vw, 42px);
+  }
+  .book-footnote-popover {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    max-height: 42%;
+  }
+  .book-reader.is-scroll-mode .book-content-source {
+    padding: 28px 22px;
+  }
+  .book-reader.is-scroll-mode .book-content-source .baca-isi {
+    font-size: 20px;
+  }
 }
 
 /* ===== Halaman kategori / penulis ===== */

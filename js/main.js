@@ -662,10 +662,496 @@
     if (!t) { wadah.innerHTML = '<p class="kosong">Tulisan tidak ditemukan.</p>'; return; }
     document.title = t.judul + " | Catatan Min";
     var tanggalHtml = formatTanggalHtml(t.tanggal);
-    wadah.innerHTML = '<span class="label">' + esc(t.label) + ": " + esc(t.penulis) + '</span><br>' +
-      '<h1 class="judul-garis">' + esc(t.judul) + '</h1>' +
-      (tanggalHtml ? '<p class="baca-tanggal">' + tanggalHtml + '</p>' : '') +
-      '<div class="baca-isi">' + renderIsiBaca(t.isi) + "</div>";
+    wadah.innerHTML = '<section class="book-reader" aria-label="Pembaca tulisan">' +
+      '<div class="book-reader-tools"><button class="book-mode-toggle" type="button" aria-pressed="false">Mode Gulir</button></div>' +
+      '<div class="book-spread" aria-label="Halaman buku">' +
+        '<div class="book-viewport"></div>' +
+        '<div class="book-content-source" hidden>' +
+          '<div class="book-opening"><span class="label">' + esc(t.label) + ": " + esc(t.penulis) + '</span>' +
+            '<h1 class="judul-garis">' + esc(t.judul) + '</h1>' +
+            (tanggalHtml ? '<p class="baca-tanggal">' + tanggalHtml + '</p>' : '') +
+          '</div>' +
+          '<div class="baca-isi">' + renderIsiBaca(t.isi) + '</div>' +
+        '</div>' +
+        '<aside class="book-footnote-popover" role="dialog" aria-label="Catatan kaki" hidden>' +
+          '<div class="book-footnote-content"></div>' +
+          '<button class="book-footnote-close" type="button" aria-label="Tutup catatan kaki">×</button>' +
+        '</aside>' +
+      '</div>' +
+      '<div class="book-controls">' +
+        '<button class="book-page-button" type="button" data-book-page="-1" aria-label="Halaman sebelumnya"><svg width="14" height="22" viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2 3 11l8 9"/></svg></button>' +
+        '<span class="book-page-indicator" aria-live="polite"></span>' +
+        '<button class="book-page-button" type="button" data-book-page="1" aria-label="Halaman berikutnya"><svg width="14" height="22" viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 2 8 9-8 9"/></svg></button>' +
+      '</div>' +
+      '<div class="book-progress" role="progressbar" aria-label="Kemajuan membaca" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>' +
+    '</section>';
+    setupBookReader();
+  }
+
+  function paginateIntoPages(source, pageWidth, pageHeight, isDesktop) {
+    var rack = document.createElement("div");
+    rack.style.cssText = "position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;z-index:-1;";
+    document.body.appendChild(rack);
+
+    var pages = [];
+    var currentContent;
+
+    function newPage(isBlank) {
+      var page = document.createElement("div");
+      page.className = isBlank ? "page page--blank" : "page";
+      page.style.width = pageWidth + "px";
+      page.style.height = pageHeight + "px";
+      var content = document.createElement("div");
+      content.className = "page-content baca-isi";
+      if (isBlank) content.setAttribute("aria-hidden", "true");
+      page.appendChild(content);
+      rack.appendChild(page);
+      pages.push(page);
+      currentContent = content;
+    }
+
+    function pageHasContent() {
+      return currentContent.children.length > 0;
+    }
+
+    function fitsPage() {
+      return currentContent.scrollHeight <= currentContent.clientHeight + 1;
+    }
+
+    function appendIfFits(node) {
+      currentContent.appendChild(node);
+      if (fitsPage()) return true;
+      currentContent.removeChild(node);
+      return false;
+    }
+
+    function textNodesWithin(element) {
+      var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      var nodes = [];
+      var node;
+      while ((node = walker.nextNode())) nodes.push(node);
+      return nodes;
+    }
+
+    function textPoint(nodes, offset) {
+      var consumed = 0;
+      for (var i = 0; i < nodes.length; i++) {
+        var length = nodes[i].nodeValue.length;
+        if (offset <= consumed + length) {
+          return { node: nodes[i], offset: offset - consumed };
+        }
+        consumed += length;
+      }
+      if (!nodes.length) return null;
+      return { node: nodes[nodes.length - 1], offset: nodes[nodes.length - 1].nodeValue.length };
+    }
+
+    function paragraphFragment(block, nodes, start, end) {
+      var startPoint = textPoint(nodes, start);
+      var endPoint = textPoint(nodes, end);
+      if (!startPoint || !endPoint || start >= end) return null;
+      var range = document.createRange();
+      range.setStart(startPoint.node, startPoint.offset);
+      range.setEnd(endPoint.node, endPoint.offset);
+      var fragment = block.cloneNode(false);
+      fragment.removeAttribute("id");
+      fragment.classList.add("page-paragraph-fragment");
+      fragment.appendChild(range.cloneContents());
+      return fragment;
+    }
+
+    function paragraphBreaks(text) {
+      var breaks = [];
+      var match;
+      var sentence = /[.!?]+(?:["'”’)]*)?(?:\s+|$)/g;
+      while ((match = sentence.exec(text)) !== null) breaks.push(sentence.lastIndex);
+      if (!breaks.length) {
+        var words = /\s+/g;
+        while ((match = words.exec(text)) !== null) breaks.push(words.lastIndex);
+      }
+      if (breaks.length && breaks[breaks.length - 1] < text.length) breaks.push(text.length);
+      if (!breaks.length && text.length) breaks.push(text.length);
+      return breaks;
+    }
+
+    function appendParagraphRange(block, nodes, text, start, end, maySplitWords) {
+      var fragment = paragraphFragment(block, nodes, start, end);
+      if (!fragment) return;
+      if (appendIfFits(fragment)) return;
+
+      newPageIfNeeded();
+      if (appendIfFits(fragment)) return;
+
+      if (maySplitWords) {
+        var segment = text.slice(start, end);
+        var wordPattern = /\S+\s*/g;
+        var match;
+        while ((match = wordPattern.exec(segment)) !== null) {
+          appendParagraphRange(
+            block, nodes, text,
+            start + match.index,
+            start + match.index + match[0].length,
+            false
+          );
+        }
+      } else {
+        currentContent.appendChild(fragment);
+      }
+    }
+
+    function newPageIfNeeded() {
+      if (pageHasContent()) newPage(false);
+    }
+
+    function splitParagraph(block) {
+      var text = block.textContent || "";
+      var nodes = textNodesWithin(block);
+      if (!text.length || !nodes.length) {
+        currentContent.appendChild(block.cloneNode(true));
+        return;
+      }
+      var start = 0;
+      paragraphBreaks(text).forEach(function (end) {
+        appendParagraphRange(block, nodes, text, start, end, true);
+        start = end;
+      });
+    }
+
+    function continuedList(sourceList, startIndex) {
+      var list = sourceList.cloneNode(false);
+      if (list.tagName === "OL") {
+        var startValue = parseInt(sourceList.getAttribute("start"), 10);
+        list.setAttribute("start", String((isNaN(startValue) ? 1 : startValue) + startIndex));
+      }
+      currentContent.appendChild(list);
+      return list;
+    }
+
+    function splitList(listSource) {
+      var items = Array.prototype.slice.call(listSource.children);
+      var list = continuedList(listSource, 0);
+      items.forEach(function (item, index) {
+        var clone = item.cloneNode(true);
+        list.appendChild(clone);
+        if (!fitsPage()) {
+          list.removeChild(clone);
+          if (list.children.length) {
+            newPage(false);
+            list = continuedList(listSource, index);
+          }
+          list.appendChild(clone);
+        }
+      });
+    }
+
+    function splitFootnotes(section) {
+      var sourceList = section.querySelector("ol");
+      if (!sourceList) {
+        currentContent.appendChild(section.cloneNode(true));
+        return;
+      }
+      var items = Array.prototype.slice.call(sourceList.children);
+      var list;
+      function newFootnoteList(startIndex) {
+        var sectionPart = section.cloneNode(false);
+        list = continuedList(sourceList, startIndex);
+        sectionPart.appendChild(list);
+        currentContent.appendChild(sectionPart);
+      }
+      newFootnoteList(0);
+      items.forEach(function (item, index) {
+        var clone = item.cloneNode(true);
+        list.appendChild(clone);
+        if (!fitsPage()) {
+          list.removeChild(clone);
+          if (list.children.length) {
+            newPage(false);
+            newFootnoteList(index);
+          }
+          list.appendChild(clone);
+        }
+      });
+    }
+
+    function placeBlock(block) {
+      if (block.classList.contains("baca-footnote")) {
+        newPageIfNeeded();
+        splitFootnotes(block);
+        return;
+      }
+      if (appendIfFits(block.cloneNode(true))) return;
+      newPageIfNeeded();
+      if (appendIfFits(block.cloneNode(true))) return;
+      if (block.tagName === "P") {
+        splitParagraph(block);
+      } else if (block.tagName === "OL" || block.tagName === "UL") {
+        splitList(block);
+      } else {
+        currentContent.appendChild(block.cloneNode(true));
+      }
+    }
+
+    newPage(false);
+    var opening = source.querySelector(".book-opening");
+    if (opening) currentContent.appendChild(opening.cloneNode(true));
+    var body = source.querySelector(".baca-isi");
+    if (body) {
+      Array.prototype.forEach.call(body.children, placeBlock);
+    }
+    if (isDesktop && pages.length % 2) newPage(true);
+    rack.parentNode.removeChild(rack);
+    return pages;
+  }
+
+  function setupBookReader() {
+    var reader = wadah.querySelector(".book-reader");
+    var spread = reader.querySelector(".book-spread");
+    var bookContainer = reader.querySelector(".book-viewport");
+    var source = reader.querySelector(".book-content-source");
+    var controls = reader.querySelector(".book-controls");
+    var indicator = reader.querySelector(".book-page-indicator");
+    var progress = reader.querySelector(".book-progress");
+    var progressFill = progress.querySelector("span");
+    var modeToggle = reader.querySelector(".book-mode-toggle");
+    var popover = reader.querySelector(".book-footnote-popover");
+    var popoverContent = reader.querySelector(".book-footnote-content");
+    var closePopover = reader.querySelector(".book-footnote-close");
+    var previousButton = controls.querySelector('[data-book-page="-1"]');
+    var nextButton = controls.querySelector('[data-book-page="1"]');
+    var pageFlip = null;
+    var currentPageIndex = 0;
+    var footnoteTrigger = null;
+    var resizeTimer = null;
+    var userToggledMode = false;
+
+    function updatePageStatus(pageIndex) {
+      if (!pageFlip) return;
+      var pageCount = pageFlip.getPageCount();
+      var orientation = pageFlip.getOrientation ? pageFlip.getOrientation() : "";
+      var portrait = orientation ? orientation === "portrait" : window.innerWidth <= 900;
+      var visiblePages = portrait ? 1 : 2;
+      currentPageIndex = typeof pageIndex === "number" ? pageIndex : pageFlip.getCurrentPageIndex();
+      var first = currentPageIndex + 1;
+      var last = Math.min(currentPageIndex + visiblePages, pageCount);
+      indicator.textContent = portrait
+        ? first + " / " + pageCount
+        : first + "–" + last + " / " + pageCount;
+      previousButton.disabled = currentPageIndex <= 0;
+      nextButton.disabled = currentPageIndex + visiblePages >= pageCount;
+      var progressPage = Math.min(currentPageIndex + visiblePages, pageCount);
+      var percentage = Math.round((progressPage / Math.max(1, pageCount)) * 100);
+      progress.setAttribute("aria-valuenow", String(percentage));
+      progressFill.style.transform = "scaleX(" + percentage / 100 + ")";
+    }
+
+    function pageDimensions() {
+      var desktop = window.innerWidth > 900;
+      var width = desktop ? bookContainer.clientWidth / 2 : bookContainer.clientWidth;
+      var height = bookContainer.clientHeight;
+      return {
+        width: Math.max(280, Math.min(560, Math.round(width || 280))),
+        height: Math.max(420, Math.min(820, Math.round(height || 420))),
+        desktop: desktop
+      };
+    }
+
+    function showLibraryFallback() {
+      reader.classList.add("is-scroll-mode");
+      bookContainer.hidden = true;
+      source.hidden = false;
+      modeToggle.disabled = true;
+      modeToggle.textContent = "Mode Buku";
+      modeToggle.setAttribute("aria-pressed", "true");
+      var message = document.createElement("p");
+      message.className = "book-reader-error";
+      message.setAttribute("role", "status");
+      message.textContent = "Mode buku tidak tersedia; tulisan ditampilkan dalam mode gulir.";
+      reader.insertBefore(message, controls);
+    }
+
+    function restoreBookContainer() {
+      if (bookContainer.parentElement !== spread) {
+        spread.insertBefore(bookContainer, source);
+      }
+    }
+
+    function destroyPageFlip() {
+      if (pageFlip) {
+        pageFlip.destroy();
+        pageFlip = null;
+      }
+      restoreBookContainer();
+      bookContainer.innerHTML = "";
+      bookContainer.removeAttribute("style");
+    }
+
+    function setReaderMode(scrollMode) {
+      var isScrollMode = reader.classList.contains("is-scroll-mode");
+      if (scrollMode && !isScrollMode) {
+        currentPageIndex = pageFlip ? pageFlip.getCurrentPageIndex() : currentPageIndex;
+        destroyPageFlip();
+        bookContainer.hidden = true;
+        source.hidden = false;
+        reader.classList.add("is-scroll-mode");
+      } else if (!scrollMode) {
+        if (isScrollMode) {
+          reader.classList.remove("is-scroll-mode");
+          source.hidden = true;
+          bookContainer.hidden = false;
+        }
+        if (!pageFlip) initializePageFlip(currentPageIndex);
+      }
+      var isScrollModeAfterChange = reader.classList.contains("is-scroll-mode");
+      modeToggle.textContent = isScrollModeAfterChange ? "Mode Buku" : "Mode Gulir";
+      modeToggle.setAttribute("aria-pressed", String(isScrollModeAfterChange));
+    }
+
+    function initializePageFlip(startPage) {
+      if (!window.St || typeof window.St.PageFlip !== "function") {
+        showLibraryFallback();
+        return;
+      }
+      var dimensions = pageDimensions();
+      var pages = paginateIntoPages(source, dimensions.width, dimensions.height, dimensions.desktop);
+      bookContainer.innerHTML = "";
+      pages.forEach(function (page) { bookContainer.appendChild(page); });
+      pages.forEach(function (page) {
+        page.querySelectorAll("img").forEach(function (image) {
+          image.loading = "eager";
+          image.addEventListener("load", scheduleRebuild, { once: true });
+        });
+      });
+      if (!dimensions.desktop) startPage = Math.max(0, Math.min(startPage, pages.length - 1));
+      else startPage = Math.max(0, Math.min(Math.floor(startPage / 2) * 2, pages.length - 2));
+      pageFlip = new window.St.PageFlip(bookContainer, {
+        width: dimensions.width,
+        height: dimensions.height,
+        size: "stretch",
+        minWidth: 280,
+        maxWidth: 560,
+        minHeight: 420,
+        maxHeight: 820,
+        usePortrait: true,
+        showCover: false,
+        drawShadow: true,
+        maxShadowOpacity: 0.35,
+        flippingTime: 650,
+        mobileScrollSupport: false,
+        startPage: startPage
+      });
+      pageFlip.loadFromHTML(bookContainer.querySelectorAll(".page"));
+      pageFlip.on("flip", function (event) {
+        updatePageStatus(typeof event.data === "number" ? event.data : pageFlip.getCurrentPageIndex());
+      });
+      pageFlip.on("changeOrientation", function () {
+        updatePageStatus(pageFlip.getCurrentPageIndex());
+      });
+      updatePageStatus(pageFlip.getCurrentPageIndex());
+    }
+
+    function rebuildPageFlip() {
+      if (reader.classList.contains("is-scroll-mode")) return;
+      var savedPage = pageFlip ? pageFlip.getCurrentPageIndex() : currentPageIndex;
+      destroyPageFlip();
+      initializePageFlip(savedPage);
+    }
+
+    function scheduleRebuild() {
+      if (resizeTimer !== null) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(function () {
+        resizeTimer = null;
+        rebuildPageFlip();
+      }, 160);
+    }
+
+    function tutupPopover() {
+      popover.hidden = true;
+      popoverContent.textContent = "";
+      if (footnoteTrigger && footnoteTrigger.isConnected) footnoteTrigger.focus();
+      footnoteTrigger = null;
+    }
+
+    controls.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-book-page]");
+      if (!button || button.disabled || !pageFlip) return;
+      if (button.dataset.bookPage === "-1") pageFlip.flipPrev();
+      else pageFlip.flipNext();
+    });
+
+    modeToggle.addEventListener("click", function () {
+      var scrollMode = !reader.classList.contains("is-scroll-mode");
+      userToggledMode = true;
+      setReaderMode(scrollMode);
+    });
+
+    closePopover.addEventListener("click", tutupPopover);
+    spread.addEventListener("click", function (event) {
+      var reference = event.target.closest(".fn-ref a");
+      if (reference) {
+        var target = document.getElementById(reference.getAttribute("href").slice(1));
+        if (!target) return;
+        event.preventDefault();
+        event.stopPropagation();
+        var note = target.cloneNode(true);
+        note.removeAttribute("id");
+        note.querySelectorAll(".fn-balik").forEach(function (link) { link.remove(); });
+        popoverContent.innerHTML = note.innerHTML;
+        popover.hidden = false;
+        footnoteTrigger = reference;
+        closePopover.focus();
+        return;
+      }
+
+      var backLink = event.target.closest(".fn-balik");
+      if (!backLink) return;
+      event.preventDefault();
+      event.stopPropagation();
+      var referenceTarget = document.getElementById(backLink.getAttribute("href").slice(1));
+      tutupPopover();
+      if (!referenceTarget) return;
+      if (reader.classList.contains("is-scroll-mode")) {
+        referenceTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (pageFlip) {
+        var page = referenceTarget.closest(".page");
+        var pageNodes = bookContainer.querySelectorAll(".page");
+        var pageIndex = Array.prototype.indexOf.call(pageNodes, page);
+        if (pageIndex >= 0) pageFlip.turnToPage(pageIndex);
+      }
+    });
+
+    source.querySelectorAll("img").forEach(function (image) {
+      image.loading = "eager";
+      image.addEventListener("load", scheduleRebuild, { once: true });
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !popover.hidden) {
+        tutupPopover();
+        return;
+      }
+      if (reader.classList.contains("is-scroll-mode")) return;
+      if (event.target.closest && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (!pageFlip) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        pageFlip.flipPrev();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        pageFlip.flipNext();
+      }
+    });
+
+    window.addEventListener("resize", function () {
+      var modeChanged = false;
+      if (!userToggledMode) {
+        var defaultScrollMode = window.innerWidth <= 900;
+        modeChanged = defaultScrollMode !== reader.classList.contains("is-scroll-mode");
+        if (modeChanged) setReaderMode(defaultScrollMode);
+      }
+      if (!modeChanged) scheduleRebuild();
+    });
+    if ("ResizeObserver" in window) new ResizeObserver(scheduleRebuild).observe(spread);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRebuild);
+    setReaderMode(window.innerWidth <= 900);
   }
 
   /* ---------- Penulis ---------- */
