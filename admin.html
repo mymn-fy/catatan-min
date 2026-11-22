@@ -89,7 +89,8 @@
     /* Toolbar editor isi */
     .adm .toolbar {
       display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
-      padding: 8px; border: 1px solid var(--ink); border-bottom: 0; background: #f8f8f8;
+      position: sticky; top: 0; z-index: 40;
+      padding: 8px; border: 1px solid var(--ink); border-bottom: 0; background: #f5f5f5;
     }
     .adm .tb-sep {
       display: inline-block; width: 1px; height: 20px; background: #ccc; margin: 0 3px;
@@ -357,7 +358,8 @@
     "use strict";
     var $ = function (id) { return document.getElementById(id); };
     var editor = $("editor-visual");
-    var editorRange = null;
+    var toolbar = document.querySelector(".toolbar");
+    var lastEditorRange = null;
     var LABEL = { prosa: "Prosa", puisi: "Puisi", lain: "Riset" };
     var BUCKET = "foto";
     var BULAN = [
@@ -447,25 +449,29 @@
     }
 
     /* ---------- Live visual editor and selection helpers ---------- */
+    function nodeDalamEditor(node) {
+      return !!node && (node === editor || editor.contains(node));
+    }
+
     function simpanSeleksiEditor() {
       var sel = window.getSelection();
-      if (sel && sel.rangeCount && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-        editorRange = sel.getRangeAt(0).cloneRange();
-      }
+      if (!sel || !sel.rangeCount || !nodeDalamEditor(sel.anchorNode) || !nodeDalamEditor(sel.focusNode)) return false;
+      lastEditorRange = sel.getRangeAt(0).cloneRange();
+      return true;
     }
 
     function pulihkanSeleksiEditor() {
-      var savedRange = editorRange && editor.contains(editorRange.commonAncestorContainer)
-        ? editorRange.cloneRange()
+      var savedRange = lastEditorRange && nodeDalamEditor(lastEditorRange.commonAncestorContainer)
+        ? lastEditorRange.cloneRange()
         : null;
       editor.focus();
       var sel = window.getSelection();
       if (savedRange) {
         sel.removeAllRanges();
         sel.addRange(savedRange);
-        editorRange = savedRange.cloneRange();
-      } else if (sel && sel.rangeCount && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-        editorRange = sel.getRangeAt(0).cloneRange();
+        lastEditorRange = savedRange.cloneRange();
+      } else if (sel && sel.rangeCount && nodeDalamEditor(sel.anchorNode) && nodeDalamEditor(sel.focusNode)) {
+        lastEditorRange = sel.getRangeAt(0).cloneRange();
       } else {
         return null;
       }
@@ -487,8 +493,7 @@
         var current = blokSaatIni(range.startContainer);
         return current ? [current] : [];
       }
-      var candidates = editor.querySelectorAll("p, li, blockquote");
-      if (!candidates.length) candidates = editor.querySelectorAll("div");
+      var candidates = editor.querySelectorAll("p, li, div, blockquote");
       var blocks = [];
       Array.prototype.forEach.call(candidates, function (block) {
         if (!range.intersectsNode(block)) return;
@@ -497,6 +502,73 @@
         if (blocks.indexOf(target) === -1) blocks.push(target);
       });
       return blocks;
+    }
+
+    function nilaiFormatNode(node, jenis) {
+      var element = node && node.nodeType === 1 ? node : node && node.parentElement;
+      while (element && element !== editor) {
+        if (jenis === "font") {
+          if (element.dataset.editorFont) return element.dataset.editorFont;
+          if (element.classList.contains("teks-garamond")) return "garamond";
+          if (element.classList.contains("teks-palatino")) return "palatino";
+          if (element.classList.contains("teks-sans")) return "sans";
+        } else if (jenis === "size") {
+          var size = element.dataset.editorSize || element.style.fontSize;
+          if (size) return size.replace(/px$/, "");
+        } else if (jenis === "leading") {
+          var leading = element.style.lineHeight || element.dataset.editorLeading;
+          if (leading) return leading;
+        }
+        element = element.parentElement;
+      }
+      return "";
+    }
+
+    function sinkronkanDropdownToolbar(sel) {
+      if (!sel || !sel.rangeCount || !nodeDalamEditor(sel.anchorNode) || !nodeDalamEditor(sel.focusNode)) return;
+      var range = sel.getRangeAt(0);
+      var nodes = [];
+      if (range.collapsed) {
+        var node = sel.focusNode;
+        if (node.nodeType === 1 && node.childNodes.length) {
+          node = node.childNodes[Math.min(sel.focusOffset, node.childNodes.length - 1)];
+        }
+        nodes.push(node);
+      } else {
+        var walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+        var textNode;
+        while ((textNode = walker.nextNode())) {
+          if (range.intersectsNode(textNode)) nodes.push(textNode);
+        }
+        if (!nodes.length) nodes = blokTerpilih(range);
+      }
+
+      function nilaiSeragam(jenis, select) {
+        var values = nodes.map(function (node) { return nilaiFormatNode(node, jenis); });
+        if (jenis === "leading") {
+          values = values.map(function (value) {
+            return value && Number.isFinite(Number(value)) ? String(Number(value)) : value;
+          });
+        }
+        var first = values[0] || "";
+        if (values.some(function (value) { return value !== first; })) return "";
+        var option = Array.prototype.find.call(select.options, function (item) {
+          return jenis === "leading" && first && item.value
+            ? Number(item.value) === Number(first)
+            : item.value === first;
+        });
+        return option ? option.value : "";
+      }
+
+      $("sel-font").value = nilaiSeragam("font", $("sel-font"));
+      $("sel-ukuran").value = nilaiSeragam("size", $("sel-ukuran"));
+      $("sel-leading").value = nilaiSeragam("leading", $("sel-leading"));
+    }
+
+    function tanganiPerubahanSeleksiEditor() {
+      if (toolbar.contains(document.activeElement)) return;
+      var sel = window.getSelection();
+      if (simpanSeleksiEditor()) sinkronkanDropdownToolbar(sel);
     }
 
     function aturGayaBlok(block, jenis, nilai) {
@@ -528,6 +600,8 @@
       var range = pulihkanSeleksiEditor();
       if (!range) return;
       blokTerpilih(range).forEach(function (block) { aturGayaBlok(block, jenis, nilai); });
+      simpanSeleksiEditor();
+      sinkronkanDropdownToolbar(window.getSelection());
     }
 
     function bungkusTeksTerpilih(buatPembungkus) {
@@ -560,7 +634,7 @@
       var sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(rangeBaru);
-      editorRange = rangeBaru.cloneRange();
+      lastEditorRange = rangeBaru.cloneRange();
       adaPerubahan = true;
       return true;
     }
@@ -573,18 +647,42 @@
         else if (nilai === "sans") span.classList.add("teks-sans");
       } else if (jenis === "size") {
         span.style.fontSize = nilai + "px";
-      } else if (jenis === "leading") {
-        span.classList.add("teks-leading");
-        span.style.lineHeight = nilai;
       }
       return span;
     }
 
+    function lepaskanLeading(span) {
+      span.classList.remove("teks-leading");
+      if (!span.classList.length) span.removeAttribute("class");
+      span.style.removeProperty("line-height");
+      if (!span.style.cssText) span.removeAttribute("style");
+      if (span.classList.length || span.attributes.length) return;
+      var parent = span.parentNode;
+      while (span.firstChild) parent.insertBefore(span.firstChild, span);
+      parent.removeChild(span);
+    }
+
+    function terapkanSpasi(range, nilai) {
+      if (!range) return;
+      blokTerpilih(range).forEach(function (block) {
+        block.style.lineHeight = nilai || "";
+        block.dataset.editorLeading = nilai || "";
+        Array.prototype.forEach.call(block.querySelectorAll(".teks-leading"), lepaskanLeading);
+      });
+      adaPerubahan = true;
+      simpanSeleksiEditor();
+      sinkronkanDropdownToolbar(window.getSelection());
+    }
+
     function formatInlineAtauBlok(jenis, nilai) {
       var range = pulihkanSeleksiEditor();
+      if (jenis === "leading") {
+        terapkanSpasi(range, nilai);
+        return;
+      }
       var blok = range ? blokSaatIni(range.startContainer) : null;
       if (blok && /^(OL|UL)$/.test(blok.tagName) &&
-          (jenis === "font" || jenis === "size" || jenis === "leading")) {
+          (jenis === "font" || jenis === "size")) {
         terapkanKeBlok(jenis, nilai);
         if (jenis === "size") bersihkanUkuranInlineDaftar(blok);
         return;
@@ -592,6 +690,8 @@
       if (!nilai || !bungkusTeksTerpilih(function () { return buatSpanFormat(jenis, nilai); })) {
         terapkanKeBlok(jenis, nilai);
       }
+      simpanSeleksiEditor();
+      sinkronkanDropdownToolbar(window.getSelection());
     }
 
     function bersihkanUkuranInlineDaftar(list) {
@@ -622,7 +722,7 @@
       var sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-      editorRange = range.cloneRange();
+      lastEditorRange = range.cloneRange();
       editor.focus();
       adaPerubahan = true;
     }
@@ -641,7 +741,7 @@
       var sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-      editorRange = range.cloneRange();
+      lastEditorRange = range.cloneRange();
       editor.focus();
       adaPerubahan = true;
     }
@@ -685,16 +785,19 @@
       return buatKontrolFoto(figure);
     }
 
-    editor.addEventListener("mouseup", simpanSeleksiEditor);
-    editor.addEventListener("keyup", simpanSeleksiEditor);
-    editor.addEventListener("focus", simpanSeleksiEditor);
-    document.addEventListener("selectionchange", simpanSeleksiEditor);
-    editor.addEventListener("input", function () { adaPerubahan = true; simpanSeleksiEditor(); });
+    editor.addEventListener("mouseup", tanganiPerubahanSeleksiEditor);
+    editor.addEventListener("touchend", tanganiPerubahanSeleksiEditor);
+    editor.addEventListener("keyup", tanganiPerubahanSeleksiEditor);
+    editor.addEventListener("click", tanganiPerubahanSeleksiEditor);
+    editor.addEventListener("focus", tanganiPerubahanSeleksiEditor);
+    document.addEventListener("selectionchange", tanganiPerubahanSeleksiEditor);
+    editor.addEventListener("input", function () { adaPerubahan = true; tanganiPerubahanSeleksiEditor(); });
     document.querySelectorAll(".toolbar button, .toolbar select").forEach(function (control) {
       control.addEventListener("mousedown", function (e) {
         simpanSeleksiEditor();
         if (control.tagName === "BUTTON") e.preventDefault();
       });
+      control.addEventListener("touchstart", simpanSeleksiEditor, { passive: true });
     });
 
     editor.addEventListener("click", function (e) {
@@ -756,16 +859,25 @@
     });
 
     $("sel-font").addEventListener("change", function () {
-      formatInlineAtauBlok("font", this.value);
-      this.value = "";
+      var nilai = this.value;
+      pulihkanSeleksiEditor();
+      formatInlineAtauBlok("font", nilai);
+      simpanSeleksiEditor();
+      sinkronkanDropdownToolbar(window.getSelection());
     });
     $("sel-ukuran").addEventListener("change", function () {
-      formatInlineAtauBlok("size", this.value);
-      this.value = "";
+      var nilai = this.value;
+      pulihkanSeleksiEditor();
+      formatInlineAtauBlok("size", nilai);
+      simpanSeleksiEditor();
+      sinkronkanDropdownToolbar(window.getSelection());
     });
     $("sel-leading").addEventListener("change", function () {
-      formatInlineAtauBlok("leading", this.value);
-      this.value = "";
+      var nilai = this.value;
+      pulihkanSeleksiEditor();
+      formatInlineAtauBlok("leading", nilai);
+      simpanSeleksiEditor();
+      sinkronkanDropdownToolbar(window.getSelection());
     });
 
     document.querySelectorAll("button[data-align]").forEach(function (button) {
@@ -1179,7 +1291,7 @@
       editor.querySelectorAll("figure.baca-foto").forEach(buatKontrolFoto);
       kontrolFootnoteEditor();
       if (!editor.childNodes.length) editor.innerHTML = "<p><br></p>";
-      editorRange = null;
+      lastEditorRange = null;
     }
 
     function isiEditor() {
@@ -1354,7 +1466,7 @@
       adaPerubahan = false;
       $("f-tulisan").reset();
       editor.innerHTML = "<p><br></p>";
-      editorRange = null;
+      lastEditorRange = null;
       $("t-label").value = "Prosa";
       $("t-tanggal").value = hariIniIso();
       $("jdl-t").textContent = "Tulisan baru";
